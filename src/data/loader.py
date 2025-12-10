@@ -76,3 +76,43 @@ def split_features_target(df: pd.DataFrame):
     X = df.drop(columns=["classtype_v1"]).values
 
     return X, y
+
+class DataLoader:
+    """
+    Classe che gestisce l'intera pipeline di preprocessing del dataset.
+    """
+
+    def __init__(self, path: str):
+        self.path = path
+
+    def load(self):
+        """
+        Esegue l'intero preprocessing:
+        1. loading
+        2. cleaning
+        3. renaming
+        4. removing
+        5. normalization
+        6. X/y separation
+        Restituisce: X, y
+        """
+        # 1. Caricamento dataset
+        df = load_raw_dataset(self.path)
+
+        # 2. Cleaning
+        df = clean_dataset(df)
+
+        # 3. Renaming colonne
+        df = rename_columns(df)
+
+        # 4. Rimozione colonne inutili
+        df = remove_unwanted_columns(df)
+
+        # 5. Normalizzazione feature
+        df = normalize_features(df)
+
+        # 6. X/y separation
+        X, y = split_features_target(df)
+
+        return X, y
+
