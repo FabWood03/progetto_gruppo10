@@ -59,3 +59,20 @@ def normalize_features(df: pd.DataFrame):
     
     return df
 
+def split_features_target(df: pd.DataFrame):
+    """
+    Separa le feature X dal target y.
+    Mappa la classe da {2,4} a {0,1}.
+    """
+    df = df.copy()
+
+    # Mappatura della classe
+    df["classtype_v1"] = df["classtype_v1"].map({2.0: 0, 4.0: 1})
+
+    # y = target
+    y = df["classtype_v1"].values
+
+    # X = tutto tranne il target
+    X = df.drop(columns=["classtype_v1"]).values
+
+    return X, y
