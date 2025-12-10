@@ -25,3 +25,14 @@ def clean_dataset(df: pd.DataFrame):
     df = df.fillna(df.median())
 
     return df
+
+def rename_columns(df: pd.DataFrame):
+    """
+    Rinomina colonne con nomi errati o non standard.
+    """
+    df = df.rename(columns={
+        "uniformity_cellsize_xx": "Uniformity of Cell Size",
+        "clump_thickness_ty": "Clump Thickness",
+        "bareNucleix_wrong": "Bare Nuclei"
+    })
+    return df
