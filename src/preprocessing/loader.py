@@ -43,14 +43,23 @@ def remove_unwanted_columns(df: pd.DataFrame):
     return df
 
 
-def normalize_features(df: pd.DataFrame):
-    """
-    Normalizza tutte le feature numeriche usando min-max scaling.
-    Non applicata sulla colonna target.
-    """
+def normalize_features(df: pd.DataFrame, exclude_columns=None):
     df = df.copy()
-    df = (df - df.min()) / (df.max() - df.min())
+    exclude_columns = exclude_columns or []
+
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    numeric_cols = [c for c in numeric_cols if c not in exclude_columns]
+
+    for col in numeric_cols:
+        min_val = df[col].min()
+        max_val = df[col].max()
+        if min_val != max_val:
+            df[col] = (df[col] - min_val) / (max_val - min_val)
+        else:
+            df[col] = 0.0
+
     return df
+
 
 
 def split_features_target(
@@ -128,16 +137,17 @@ class DataLoader:
             if col in df.columns:
                 df = df.drop(columns=[col])
 
-        # 5. Normalizzazione
-        df = normalize_features(df)
+        # 5. Normalizzazione SOLO delle feature (non il target)
+        df = normalize_features(df, exclude_columns=[self.target_column])
 
         # 6. Separazione X/y
         X, y = split_features_target(
-            df,
-            target_column=self.target_column,
-            positive_label=self.positive_label,
-            negative_label=self.negative_label
-        )
+        df,
+        target_column=self.target_column,
+        positive_label=self.positive_label,
+        negative_label=self.negative_label
+    )
+
 
         return X, y
 
