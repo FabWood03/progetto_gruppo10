@@ -1,5 +1,6 @@
 # Ambiente virtuale
 .venv/
+env/
 
 # File di configurazione di PyCharm
 .idea/
