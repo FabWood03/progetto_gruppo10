@@ -45,3 +45,17 @@ def remove_unwanted_columns(df: pd.DataFrame):
     if "Sample code number" in df.columns:
         df = df.drop(columns=["Sample code number"])
     return df
+
+def normalize_features(df: pd.DataFrame):
+    """
+    Normalizza tutte le feature numeriche usando min-max scaling.
+    Non applicata sulla colonna target.
+    """
+    # Per sicurezza lavoriamo su una copia
+    df = df.copy()
+    
+    # Min-max scaling: (x - min) / (max - min)
+    df = (df - df.min()) / (df.max() - df.min())
+    
+    return df
+
