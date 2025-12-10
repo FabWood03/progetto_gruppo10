@@ -36,3 +36,12 @@ def rename_columns(df: pd.DataFrame):
         "bareNucleix_wrong": "Bare Nuclei"
     })
     return df
+
+def remove_unwanted_columns(df: pd.DataFrame):
+    """
+    Rimuove colonne non utili o dannose per il modello.
+    In particolare, rimuove gli ID che non devono essere usati come feature.
+    """
+    if "Sample code number" in df.columns:
+        df = df.drop(columns=["Sample code number"])
+    return df
