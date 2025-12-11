@@ -117,4 +117,4 @@ class DataLoader:
         X = df.drop(columns=[self.target_column]).values
         y = df[self.target_column].values
 
-        return X, y
+        return X, y, df
