@@ -23,5 +23,20 @@ def chebyshev_distance(x: np.ndarray, y: np.ndarray) -> float:
     """
     return float(np.max(np.abs(x - y)))
 
+def cosine_distance(x: np.ndarray, y: np.ndarray) -> float:
+    """
+    Distanza basata su 1 - coseno.
+    Confronta la 'forma' del profilo delle feature.
+    Richiede che le feature siano normalizzate (come abbiamo fatto).
+    """
+    x_norm = np.linalg.norm(x)
+    y_norm = np.linalg.norm(y)
+
+    if x_norm == 0.0 or y_norm == 0.0:
+        return 1.0
+
+    cos_sim = float(np.dot(x, y) / (x_norm * y_norm))
+    return 1.0 - cos_sim
+
 
 
