@@ -62,5 +62,33 @@ class KNNClassifier:
         self.X_train = X
         self.y_train = y
 
+    def _compute_distances(self, x: np.ndarray) -> np.ndarray:
+        """
+        Calcola le distanze tra il campione x e tutti i campioni del training set.
+        Ritorna un array numpy monodimensionale di distanze.
+        """
+        if self.X_train is None or self.y_train is None:
+            raise RuntimeError("KNNClassifier non addestrato. Chiama fit(X, y) prima di predict().")
+
+        x = np.asarray(x)
+
+        # x deve essere un vettore 1D
+        if x.ndim != 1:
+            raise ValueError(f"x deve essere un vettore 1D, shape ricevuta: {x.shape}")
+
+        # stessa dimensione delle feature
+        if x.shape[0] != self.X_train.shape[1]:
+            raise ValueError(
+                f"Dimensione di x ({x.shape[0]}) diversa da n_features del training ({self.X_train.shape[1]})"
+            )
+
+        distances = []
+        for row in self.X_train:
+            d = self.distance_fn(x, row)  # usa la distanza scelta nel costruttore
+            distances.append(d)
+
+        return np.array(distances, dtype=float)
+
+
 
     
