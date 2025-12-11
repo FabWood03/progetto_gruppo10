@@ -135,6 +135,32 @@ class KNNClassifier:
         # Restituisce il risultato del voto
         return self._vote(neighbor_labels)
 
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predice le classi per uno o più campioni X.
+
+        - Se X è un vettore 1D → predice un singolo campione.
+        - Se X è 2D → predice tutti i campioni riga per riga.
+        """
+        if self.X_train is None or self.y_train is None:
+            raise RuntimeError("KNNClassifier non addestrato. Chiama fit(X, y) prima di predict().")
+
+        X = np.asarray(X)
+
+        # Caso: un singolo campione (vettore 1D)
+        if X.ndim == 1:
+            return np.array([self.predict_one(X)], dtype=int)
+
+        # Caso: più campioni (matrice 2D)
+        if X.ndim != 2:
+            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {X.shape}")
+
+        predictions = []
+        for sample in X:
+            predictions.append(self.predict_one(sample))
+
+        return np.array(predictions, dtype=int)
+
 
 
 
