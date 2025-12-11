@@ -22,25 +22,24 @@ def clean_dataset(df: pd.DataFrame):
     return df
 
 
-def rename_columns(df: pd.DataFrame):
+
+  
+def rename_columns(df: pd.DataFrame, mapping: dict):
     """
     Rinomina colonne con nomi errati o non standard.
     """
-    df = df.rename(columns={
-        "uniformity_cellsize_xx": "Uniformity of Cell Size",
-        "clump_thickness_ty": "Clump Thickness",
-        "bareNucleix_wrong": "Bare Nuclei"
-    })
-    return df
+    return df.rename(columns=mapping)
 
 
-def remove_unwanted_columns(df: pd.DataFrame):
+
+
+def remove_unwanted_columns(df: pd.DataFrame, columns_to_remove: list):
     """
-    Rimuove colonne non utili o dannose per il modello.
+    Rimuove le colonne specificate se presenti.
     """
-    if "Sample code number" in df.columns:
-        df = df.drop(columns=["Sample code number"])
-    return df
+    cols = [c for c in columns_to_remove if c in df.columns]
+    return df.drop(columns=cols)
+
 
 
 def normalize_features(df: pd.DataFrame, exclude_columns=None):
@@ -59,37 +58,6 @@ def normalize_features(df: pd.DataFrame, exclude_columns=None):
             df[col] = 0.0
 
     return df
-
-
-
-def split_features_target(
-    df: pd.DataFrame,
-    target_column: str = "classtype_v1",
-    positive_label: float = 4.0,
-    negative_label: float = 2.0
-):
-    """
-    Separa X e y in modo robusto:
-    - verifica che il target esista
-    - mappa {negative_label, positive_label} -> {0,1}
-    """
-    
-    if target_column not in df.columns:
-        raise ValueError(
-            f"Colonna target '{target_column}' non trovata. Colonne disponibili: {list(df.columns)}"
-        )
-
-    df = df.copy()
-
-    df[target_column] = df[target_column].map({
-        negative_label: 0,
-        positive_label: 1
-    })
-
-    y = df[target_column].values
-    X = df.drop(columns=[target_column]).values
-
-    return X, y
 
 
 class DataLoader:
@@ -130,26 +98,33 @@ class DataLoader:
         df = clean_dataset(df)
 
         # 3. Rinominare colonne
-        df = df.rename(columns=self.columns_to_rename)
+        df = rename_columns(df, self.columns_to_rename)
+
 
         # 4. Rimozione colonne inutili
-        for col in self.columns_to_remove:
-            if col in df.columns:
-                df = df.drop(columns=[col])
+        df = remove_unwanted_columns(df, self.columns_to_remove)
 
-        # 5. Normalizzazione SOLO delle feature (non il target)
+
+
+
+        # 5. Conversione del target (prima della normalizzazione)
+        df[self.target_column] = df[self.target_column].map({
+            self.negative_label: 0,
+            self.positive_label: 1
+        })
+
+        # Controllo errori nei valori target
+        if df[self.target_column].isna().any():
+            valori_originali = set(df[self.target_column])
+            raise ValueError(f"Valori target non validi trovati: {valori_originali}")
+
+        # 6. Normalizzazione SOLO delle feature (non del target)
         df = normalize_features(df, exclude_columns=[self.target_column])
 
-        # 6. Separazione X/y
-        X, y = split_features_target(
-        df,
-        target_column=self.target_column,
-        positive_label=self.positive_label,
-        negative_label=self.negative_label
-    )
-
+        # 7. Split X/y
+        X = df.drop(columns=[self.target_column]).values
+        y = df[self.target_column].values
 
         return X, y
-
 
 
