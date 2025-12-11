@@ -88,6 +88,32 @@ class KNNClassifier:
             distances.append(d)
 
         return np.array(distances, dtype=float)
+    
+    def _vote(self, neighbor_labels: np.ndarray) -> int:
+        """
+        Determina la classe finale tramite voto di maggioranza.
+
+        Se c'è un pareggio tra due o più classi,
+        viene scelta casualmente una delle classi con maggior frequenza.
+        """
+        neighbor_labels = np.asarray(neighbor_labels)
+
+        # Trova etichette uniche e conteggi
+        unique_labels, counts = np.unique(neighbor_labels, return_counts=True)
+
+        max_count = counts.max()
+
+        # Classi che hanno ottenuto il massimo numero di voti
+        best_labels = unique_labels[counts == max_count]
+
+        # Se c'è una sola classe vincente → la ritorniamo
+        if best_labels.size == 1:
+            return int(best_labels[0])
+
+        # Altrimenti scegliamo casualmente una delle etichette con max voto
+        idx = self.rng.integers(low=0, high=best_labels.size)
+        return int(best_labels[idx])
+
 
 
 
