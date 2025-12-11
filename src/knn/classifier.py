@@ -1,5 +1,6 @@
 import numpy as np
-from .distances import DISTANCE_FUNCTIONS
+from .distances import DistanceFactory
+
 
 class KNNClassifier:
     """
@@ -13,19 +14,14 @@ class KNNClassifier:
         """
         if k <= 0:
             raise ValueError("k deve essere maggiore di zero")
-        if distance not in DISTANCE_FUNCTIONS:
-            raise ValueError(f"Distanza '{distance}' non supportata. Disponibili: {list(DISTANCE_FUNCTIONS.keys())}")
 
         self.k = k
-        self.distance_name = distance
-        self.distance_fn = DISTANCE_FUNCTIONS[distance]
         self.random_state = random_state
-
-        # Random generator per gestione pareggi
         self.rng = np.random.default_rng(random_state)
+        self.distance_metric = DistanceFactory.get_distance(distance)
+        self.distance_name = distance
 
-        # Verranno valorizzati in fit()
-        self.X_train = None
+        self.x_train = None
         self.y_train = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -84,11 +80,11 @@ class KNNClassifier:
 
         distances = []
         for row in self.X_train:
-            d = self.distance_fn(x, row)  # usa la distanza scelta nel costruttore
+            d = self.distance_metric.calculate(x, row)
             distances.append(d)
 
         return np.array(distances, dtype=float)
-    
+
     def _vote(self, neighbor_labels: np.ndarray) -> int:
         """
         Determina la classe finale tramite voto di maggioranza.
@@ -113,7 +109,7 @@ class KNNClassifier:
         # Altrimenti scegliamo casualmente una delle etichette con max voto
         idx = self.rng.integers(low=0, high=best_labels.size)
         return int(best_labels[idx])
-    
+
     def predict_one(self, x: np.ndarray) -> int:
         """
         Predice la classe per un singolo campione x.
@@ -155,14 +151,6 @@ class KNNClassifier:
         if X.ndim != 2:
             raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {X.shape}")
 
-        predictions = []
-        for sample in X:
-            predictions.append(self.predict_one(sample))
+        predictions = [self.predict_one(sample) for sample in X]
 
         return np.array(predictions, dtype=int)
-
-
-
-
-
-    
