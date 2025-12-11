@@ -113,6 +113,28 @@ class KNNClassifier:
         # Altrimenti scegliamo casualmente una delle etichette con max voto
         idx = self.rng.integers(low=0, high=best_labels.size)
         return int(best_labels[idx])
+    
+    def predict_one(self, x: np.ndarray) -> int:
+        """
+        Predice la classe per un singolo campione x.
+
+        Passi:
+        - calcolo delle distanze tra x e tutto il training
+        - selezione dei k vicini più vicini
+        - voto di maggioranza con gestione pareggi
+        """
+        # Calcola distanze verso tutti i campioni del training
+        distances = self._compute_distances(x)
+
+        # Seleziona gli indici dei k campioni più vicini
+        neighbor_idxs = np.argsort(distances)[:self.k]
+
+        # Estrae le loro etichette
+        neighbor_labels = self.y_train[neighbor_idxs]
+
+        # Restituisce il risultato del voto
+        return self._vote(neighbor_labels)
+
 
 
 
