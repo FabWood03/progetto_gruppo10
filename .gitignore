@@ -1,15 +1,33 @@
-# Ambiente virtuale
+# ------------------------------------
+# 1. AMBIENTI VIRTUALI (Virtual Environments)
+# ------------------------------------
 .venv/
 env/
 
-# File di configurazione di PyCharm
-.idea/
-
-# Cache di Python
+# ------------------------------------
+# 2. PYTHON COMPILE & CACHE
+# ------------------------------------
+# File compilati di Python
+*.pyc
+*.pyd
 __pycache__/
 
-# File di sistema per Mac
-.DS_Store
+# ------------------------------------
+# 3. STRUTTURA DEL PROGETTO (IDE & OS)
+# ------------------------------------
+# Cartelle di configurazione degli IDE
+.idea/
+.vscode/
 
-# File data
-data/*csv
+# File di sistema per Mac e Windows
+.DS_Store
+Thumbs.db
+
+# ------------------------------------
+# 4. DATI E OUTPUT
+# ------------------------------------
+# Ignora tutti i file nella cartella 'data'
+data/*
+
+# Mantieni la cartella 'data' vuota nel controllo versione
+!data/.gitkeep
