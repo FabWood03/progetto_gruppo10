@@ -12,8 +12,14 @@ def main():
     print("=== TEST MANUALE KNN ===")
 
     # 1. Caricamento e preprocessing
-    loader = DataLoader("data/version_1.csv")
-    X, y = loader.load()
+    loader = DataLoader("../data/version_1.csv")
+
+
+    X, y, df_clean = loader.load()
+
+    OUTPUT_PATH = "../data/version_1_clean.csv"  # Definisci un nuovo percorso
+    df_clean.to_csv(OUTPUT_PATH, index=False)
+    print(f"\nCSV pulito salvato in: {OUTPUT_PATH}")
 
     print("\n--- Dataset Info ---")
     print(f"Shape X: {X.shape}")
