@@ -15,4 +15,13 @@ def manhattan_distance(x: np.ndarray, y: np.ndarray) -> float:
     """
     return float(np.sum(np.abs(x - y)))
 
+def chebyshev_distance(x: np.ndarray, y: np.ndarray) -> float:
+    """
+    Distanza di Chebyshev (L∞).
+    Misura la massima differenza tra le feature.
+    Utile in contesti dove conta la 'peggior' caratteristica.
+    """
+    return float(np.max(np.abs(x - y)))
+
+
 
