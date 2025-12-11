@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def load_raw_dataset(path: str):
     """
     Carica il dataset grezzo dal file CSV.
@@ -22,15 +23,11 @@ def clean_dataset(df: pd.DataFrame):
     return df
 
 
-
-  
 def rename_columns(df: pd.DataFrame, mapping: dict):
     """
     Rinomina colonne con nomi errati o non standard.
     """
     return df.rename(columns=mapping)
-
-
 
 
 def remove_unwanted_columns(df: pd.DataFrame, columns_to_remove: list):
@@ -39,7 +36,6 @@ def remove_unwanted_columns(df: pd.DataFrame, columns_to_remove: list):
     """
     cols = [c for c in columns_to_remove if c in df.columns]
     return df.drop(columns=cols)
-
 
 
 def normalize_features(df: pd.DataFrame, exclude_columns=None):
@@ -67,13 +63,13 @@ class DataLoader:
     """
 
     def __init__(
-        self,
-        path: str,
-        target_column: str = "classtype_v1",
-        positive_label: float = 4.0,
-        negative_label: float = 2.0,
-        columns_to_rename: dict = None,
-        columns_to_remove: list = None
+            self,
+            path: str,
+            target_column: str = "classtype_v1",
+            positive_label: float = 4.0,
+            negative_label: float = 2.0,
+            columns_to_rename: dict = None,
+            columns_to_remove: list = None
     ):
         self.path = path
         self.target_column = target_column
@@ -100,12 +96,8 @@ class DataLoader:
         # 3. Rinominare colonne
         df = rename_columns(df, self.columns_to_rename)
 
-
         # 4. Rimozione colonne inutili
         df = remove_unwanted_columns(df, self.columns_to_remove)
-
-
-
 
         # 5. Conversione del target (prima della normalizzazione)
         df[self.target_column] = df[self.target_column].map({
@@ -126,5 +118,3 @@ class DataLoader:
         y = df[self.target_column].values
 
         return X, y
-
-
