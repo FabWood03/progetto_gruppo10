@@ -38,5 +38,13 @@ def cosine_distance(x: np.ndarray, y: np.ndarray) -> float:
     cos_sim = float(np.dot(x, y) / (x_norm * y_norm))
     return 1.0 - cos_sim
 
+DISTANCE_FUNCTIONS = {
+    "euclidean": euclidean_distance,
+    "manhattan": manhattan_distance,
+    "chebyshev": chebyshev_distance,
+    "cosine": cosine_distance,
+}
+
+
 
 
