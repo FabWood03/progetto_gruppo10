@@ -1,7 +1,7 @@
 import numpy as np
 
-from preprocessing.loader import DataLoader
 from knn.classifier import KNNClassifier
+from preprocessing.loader import DataLoader
 from validation.holdout import HoldoutValidation
 
 
@@ -50,7 +50,6 @@ def execute_manual_knn_tests(X: np.ndarray, y: np.ndarray):
 
             print(f"\n--- {dist_name.capitalize()} ---")
             print("Predizioni:", preds)
-            # print("True labels:", sample_y) # Rimosso per minimalismo
             print(f"Accuratezza (Top 10): {accuracy:.1f}")
 
         except Exception as e:

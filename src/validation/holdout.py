@@ -1,68 +1,59 @@
-# validation/holdout.py
-
 import numpy as np
+
 from .base import ValidationStrategy
-from knn.classifier import KNNClassifier  # Assunto che il classificatore sia accessibile
-
-
-# ====================================================================
-# METRICA DI DEBUG PROVVISORIA (DA RIMUOVERE)
-# ====================================================================
-def _debug_accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    """Calcola l'accuratezza, da sostituire con il modulo metrics di Alessandro."""
-    return np.mean(y_true == y_pred)
-
-
-# ====================================================================
 
 
 class HoldoutValidation(ValidationStrategy):
     """
-    Implementazione della strategia di validazione Holdout.
-    Esegue un singolo split del dataset in Train e Test.
+    Implementazione della strategia Holdout.
+    Divide il dataset in un set di addestramento e uno di test,
+    addestra il modello sul set di addestramento e valuta
+    le prestazioni sul set di test.
     """
 
     def __init__(self, test_size: float = 0.2, random_state: int | None = None):
-        """
-        Inizializza la strategia Holdout con validazione dei parametri.
-        """
         if not (0.0 < test_size < 1.0):
             raise ValueError("Il parametro test_size deve essere compreso tra 0.0 e 1.0.")
 
         self.test_size = test_size
         self.rng = np.random.default_rng(random_state)
 
-    def validate(self, model: KNNClassifier, X: np.ndarray, y: np.ndarray) -> float:
+    def validate(self, model, X: np.ndarray, y: np.ndarray) -> float:
         """
-        Esegue la validazione Holdout: split, training, prediction e valutazione.
+        Esegue la validazione Holdout.
+        :param model: Il modello da validare (deve avere metodi .fit() e .predict()).
+        :param X: I dati di input (array 2D).
+        :param y: Le etichette di output (array 1D).
+        :return: Metriche di valutazione.
         """
+        # Conversione sicura in array NumPy
+        X = np.asarray(X)
+        y = np.asarray(y)
+
+        # Controllo integrità dimensioni
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(f"Errore dimensioni: X ha {X.shape[0]} righe, y ne ha {y.shape[0]}.")
+
+        # Controllo validità modello
+        if not (hasattr(model, "fit") and hasattr(model, "predict")):
+            raise TypeError("Il modello fornito non è valido: mancano i metodi .fit() o .predict()")
+
         n_samples = X.shape[0]
-
-        # Controllo che il modello sia un'istanza di KNNClassifier
-        if not isinstance(model, KNNClassifier):
-            raise TypeError("Il parametro 'model' deve essere un'istanza di KNNClassifier.")
-
-        # Calcolo del numero di campioni per il test set
         n_test = int(n_samples * self.test_size)
 
-        # Shuffle degli indici
+        # Shuffle efficiente
         indices = self.rng.permutation(n_samples)
 
-        # Split degli indici
-        test_indices = indices[:n_test]
-        train_indices = indices[n_test:]
+        # Split e Creazione dataset
+        test_idx = indices[:n_test]
+        train_idx = indices[n_test:]
 
-        # Creazione dei set di dati effettivi
-        X_train, y_train = X[train_indices], y[train_indices]
-        X_test, y_test = X[test_indices], y[test_indices]
+        X_train, y_train = X[train_idx], y[train_idx]
+        X_test, y_test = X[test_idx], y[test_idx]
 
-        # Training
+        # Pipeline esecuzione
         model.fit(X_train, y_train)
-
-        # Prediction sul Test Set
         y_pred = model.predict(X_test)
 
-        # Valutazione (Uso della metrica provvisoria)
-        score = _debug_accuracy_score(y_test, y_pred)
-
-        return score
+        # Calcolo metriche
+        return float(np.mean(y_test == y_pred))
