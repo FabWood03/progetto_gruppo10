@@ -197,10 +197,10 @@ def roc_curve_manual(
     tpr_list: List[float] = []
     fpr_list: List[float] = []
 
-    # Numero totale di campioni positivi reali (P)
-    # e di campioni negativi reali (N)
-    P = int(np.sum(y_true == pos_label))
-    N = int(np.sum(y_true != pos_label))
+    # Numero totale di campioni positivi reali (tot_positive_samples)
+    # e di campioni negativi reali (tot_negative_samples)
+    tot_positive_samples = int(np.sum(y_true == pos_label))
+    tot_negative_samples = int(np.sum(y_true != pos_label))
 
     for thr in thresholds:
         # Predizione binaria ottenuta applicando la soglia corrente:
@@ -212,10 +212,10 @@ def roc_curve_manual(
         c = confusion_counts(y_true, y_pred_thr, pos_label=pos_label)
 
         # Calcolo dei tassi:
-        # TPR (True Positive Rate) = TP / P
-        # FPR (False Positive Rate) = FP / N
-        tpr_list.append(_safe_div(c.tp, P))
-        fpr_list.append(_safe_div(c.fp, N))
+        # TPR (True Positive Rate) = TP / tot_positive_samples
+        # FPR (False Positive Rate) = FP / tot_negative_samples
+        tpr_list.append(_safe_div(c.tp, tot_positive_samples))
+        fpr_list.append(_safe_div(c.fp, tot_negative_samples))
 
     # Restituisce FPR, TPR e l'insieme delle soglie utilizzate
     return np.array(fpr_list), np.array(tpr_list), np.array(thresholds)
