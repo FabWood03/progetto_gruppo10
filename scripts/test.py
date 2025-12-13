@@ -1,87 +1,106 @@
+import sys
 import numpy as np
 
-from knn.classifier import KNNClassifier
+# Aggiunge la directory corrente al path per permettere l'import dei moduli locali
+sys.path.append(".")
+
 from preprocessing.loader import DataLoader
+from knn.classifier import KNNClassifier
 from validation.holdout import HoldoutValidation
 
 
-# =========================================================================
-# 2. FUNZIONI DI ESECUZIONE
-# =========================================================================
+def execute_holdout_validation(X: np.ndarray, y: np.ndarray) -> None:
+    """
+    Esegue la pipeline di validazione Holdout sul dataset.
 
-def execute_holdout_validation(X: np.ndarray, y: np.ndarray):
-    """Esegue la pipeline di validazione Holdout."""
+    Istanzia il classificatore KNN e il validatore Holdout, esegue il training
+    e il testing su uno split 80/20, stampando l'accuratezza finale.
+    :param X: Matrice delle feature.
+    :param y: Vettore delle etichette target.
+    """
     print("\n=== VALIDAZIONE HOLDOUT ===")
 
-    # Configurazione
-    knn_model = KNNClassifier(k=5, distance="euclidean", random_state=42)
-    holdout_validator = HoldoutValidation(test_size=0.2, random_state=42)
+    # Configurazione parametri
+    k_neighbors = 5
+    metric = "euclidean"
+    split_ratio = 0.2
+    seed = 42
 
-    print(f"Modello: KNN (k={knn_model.k}, dist={knn_model.distance_name})")
-    print(f"Split: {holdout_validator.test_size * 100:.0f}% Test")
+    knn_model = KNNClassifier(k=k_neighbors, distance=metric, random_state=seed)
+    validator = HoldoutValidation(test_size=split_ratio, random_state=seed)
 
-    # Esecuzione
+    print(f"Configurazione: KNN(k={k_neighbors}, dist='{metric}') | Split Test: {split_ratio:.0%}")
+
     try:
-        accuracy_score = holdout_validator.validate(knn_model, X, y)
-        print("\n--- Risultato Holdout ---")
-        print(f"Accuratezza: {accuracy_score:.4f}")
-
+        accuracy = validator.validate(knn_model, X, y)
+        print(f"Risultato (Accuratezza): {accuracy:.4f}")
     except Exception as e:
-        print(f"Errore Holdout: {e}")
+        print(f"Errore durante la validazione: {e}")
 
 
-def execute_manual_knn_tests(X: np.ndarray, y: np.ndarray):
-    """Esegue i test rapidi del KNN con diverse metriche di distanza."""
-    print("\n" + "=" * 50)
-    print("=== TEST METRICHE KNN ===")
-    print("=" * 50)
+def execute_manual_knn_tests(X: np.ndarray, y: np.ndarray) -> None:
+    """
+    Esegue test rapidi di inferenza su un sottoinsieme di dati variando la metrica.
 
+    Itera su diverse metriche di distanza (Euclidea, Manhattan, Chebyshev, Cosine)
+    per verificare che il modello produca predizioni senza errori a runtime.
+
+    :param X: Matrice delle feature.
+    :param y: Vettore delle etichette target.
+    """
+    print("\n=== TEST COMPARATIVO METRICHE ===")
+
+    # Subset per test rapido (primi 10 campioni)
     sample_X = X[:10]
     sample_y = y[:10]
-    distances_to_test = ["euclidean", "manhattan", "chebyshev", "cosine"]
+    metrics = ["euclidean", "manhattan", "chebyshev", "cosine"]
 
-    for dist_name in distances_to_test:
+    for metric in metrics:
         try:
-            clf = KNNClassifier(k=5, distance=dist_name, random_state=42)
+            # Istanzia e addestra il modello per la metrica corrente
+            clf = KNNClassifier(k=5, distance=metric, random_state=42)
             clf.fit(X, y)
 
+            # Inferenza
             preds = clf.predict(sample_X)
-            accuracy = np.mean(preds == sample_y)
+            acc = np.mean(preds == sample_y)
 
-            print(f"\n--- {dist_name.capitalize()} ---")
-            print("Predizioni:", preds)
-            print(f"Accuratezza (Top 10): {accuracy:.1f}")
-
+            print(f"Metrica: {metric:<10} | Accuratezza (Top 10): {acc:.1f}")
         except Exception as e:
-            print(f"Errore test {dist_name}: {e}")
+            print(f"Metrica: {metric:<10} | Errore: {e}")
 
-
-# =========================================================================
-# 3. FUNZIONE MAIN PRINCIPALE
-# =========================================================================
 
 def main():
-    DATA_PATH = "../data/version_1.csv"
+    """
+    Entry point dello script.
+    Carica i dati, esegue la validazione e salva il dataset pulito.
+    """
+    input_csv = "../data/version_1.csv"
+    output_csv = "../data/version_1_clean.csv"
 
-    print("--- 1. Caricamento Dati ---")
+    print("--- Avvio Pipeline ---")
 
     try:
-        data_loader = DataLoader(path=DATA_PATH)
-        X, y, df_clean = data_loader.load()
+        loader = DataLoader(path=input_csv)
+        X, y, df_clean = loader.load()
 
-        print(f"Shape: {X.shape}")
+        print(f"Dataset caricato: {X.shape[0]} campioni, {X.shape[1]} feature")
+        print(f"Distribuzione target: {np.unique(y, return_counts=True)}")
 
     except Exception as e:
-        print(f"ERRORE CRITICO: Impossibile caricare i dati da '{DATA_PATH}'.")
-        print(f"Errore: {e}")
+        print(f"ERRORE CRITICO: Impossibile caricare '{input_csv}'.\nDettagli: {e}")
         return
 
+    # Esecuzione pipeline
     execute_holdout_validation(X, y)
     execute_manual_knn_tests(X, y)
 
-    # Salvataggio dei dati puliti
-    OUTPUT_PATH = "../data/version_1_clean.csv"
-    df_clean.to_csv(OUTPUT_PATH, index=False)
+    # Salvataggio output
+    try:
+        df_clean.to_csv(output_csv, index=False)
+        print(f"\nDataset pulito salvato in: {output_csv}")
+    except Exception as e:
+        print(f"Errore nel salvataggio del CSV: {e}")
 
 
 if __name__ == "__main__":
