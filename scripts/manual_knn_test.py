@@ -5,15 +5,15 @@ Eseguire con:
     python scripts/manual_knn_test.py
 """
 
-from src.preprocessing.loader import DataLoader
 from src.knn.classifier import KNNClassifier
+from src.preprocessing.loader import DataLoader
+
 
 def main():
     print("=== TEST MANUALE KNN ===")
 
     # 1. Caricamento e preprocessing
     loader = DataLoader("../data/version_1.csv")
-
 
     X, y, df_clean = loader.load()
 
@@ -35,7 +35,7 @@ def main():
 
     preds_euc = clf_euc.predict(X[:10])
     print("Predictions (Euclidean):", preds_euc)
-    print("True labels:",            y[:10])
+    print("True labels:", y[:10])
 
     # -----------------------------
     # Test con distanza Manhattan
@@ -46,7 +46,7 @@ def main():
 
     preds_man = clf_man.predict(X[:10])
     print("Predictions (Manhattan):", preds_man)
-    print("True labels:",            y[:10])
+    print("True labels:", y[:10])
 
     # -----------------------------
     # Test con distanza Chebyshev
@@ -57,7 +57,7 @@ def main():
 
     preds_cheb = clf_cheb.predict(X[:10])
     print("Predictions (Chebyshev):", preds_cheb)
-    print("True labels:",            y[:10])
+    print("True labels:", y[:10])
 
     # -----------------------------
     # Test con distanza Cosine
@@ -68,8 +68,8 @@ def main():
 
     preds_cos = clf_cos.predict(X[:10])
     print("Predictions (Cosine):", preds_cos)
-    print("True labels:",          y[:10])
+    print("True labels:", y[:10])
+
 
 if __name__ == "__main__":
     main()
-
