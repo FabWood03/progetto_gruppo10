@@ -1,100 +1,90 @@
 from __future__ import annotations
 
-import os
-from typing import List
+import itertools
+from pathlib import Path
+from typing import Sequence, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-def _ensure_output_dir(save_path: str) -> None:
-    """
-    Crea la directory di output se non esiste.
-    """
-    output_dir = os.path.dirname(save_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
+# Tipo per i percorsi: accetta stringhe o oggetti Path
+PathType = Union[str, Path]
 
 
-def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
+def _prepare_plot(save_path: PathType, title: str) -> tuple[plt.Figure, plt.Axes]:
     """
-    Normalizza ogni riga della matrice (somma = 1),
-    utile per visualizzare percentuali nella confusion matrix.
+    Helper per inizializzare figura, assi e creare la directory di output.
     """
-    matrix = matrix.astype(float, copy=True)
-    row_sums = matrix.sum(axis=1, keepdims=True)
+    path = Path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
 
-    return np.divide(
-        matrix,
-        row_sums,
-        out=np.zeros_like(matrix),
-        where=row_sums != 0
-    )
+    fig, ax = plt.subplots()
+    ax.set_title(title)
+    return fig, ax
+
+
+def _save_and_close(fig: plt.Figure, save_path: PathType) -> None:
+    """
+    Salva la figura ottimizzando il layout e libera la memoria.
+    """
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=200)
+    plt.close(fig)
 
 
 def plot_confusion_matrix(
         cm: np.ndarray,
-        labels: List[str],
+        labels: Sequence[str],
         title: str,
-        save_path: str,
+        save_path: PathType,
         normalize: bool = False
 ) -> None:
     """
-    Visualizza e salva la matrice di confusione come immagine.
-    Le righe rappresentano le classi reali, mentre le colonne
-    rappresentano le classi predette.
-
-    Per il dataset Breast Cancer:
-    - classe 1 = Maligno (positivo)
-    - classe 0 = Benigno (negativo)
-
-    :param cm: Matrice di confusione (tipicamente 2x2).
-    :param labels: Etichette delle classi da mostrare sugli assi.
-    :param title: Titolo del grafico.
-    :param save_path: Percorso del file di output.
-    :param normalize: Se True, normalizza le righe della matrice.
-    :return: None.
-
+    Genera e salva la matrice di confusione.
+    Normalizza opzionalmente i valori per riga.
     """
-
-    _ensure_output_dir(save_path)
-
     cm = np.asarray(cm)
 
-    if cm.ndim != 2 or cm.shape[0] != cm.shape[1]:
-        raise ValueError("La confusion matrix deve essere quadrata (es. 2x2).")
+    # Validazione dimensioni
+    if cm.ndim != 2 or cm.shape[0] != cm.shape[1] or len(labels) != cm.shape[0]:
+        raise ValueError("Dimensioni della matrice o etichette non coerenti.")
 
-    if len(labels) != cm.shape[0]:
-        raise ValueError(
-            f"Numero di etichette ({len(labels)}) non coerente con cm {cm.shape}."
-        )
+    # Calcolo valori per il plot (normalizzati o grezzi)
+    if normalize:
+        row_sums = cm.sum(axis=1, keepdims=True)
+        # np.divide gestisce divisione per zero in modo sicuro
+        cm_plot = np.divide(cm, row_sums, out=np.zeros_like(cm, dtype=float), where=row_sums != 0)
+    else:
+        cm_plot = cm.astype(float)
 
-    cm_plot = _normalize_rows(cm) if normalize else cm.astype(float)
+    # Creazione Plot
+    fig, ax = _prepare_plot(save_path, title)
 
-    fig, ax = plt.subplots()
-    im = ax.imshow(cm_plot, cmap="Blues")
+    # Mappa colori
+    im = ax.imshow(cm_plot, interpolation='nearest', cmap="Blues")
+    fig.colorbar(im, ax=ax)
 
-    ax.set_title(title)
-    ax.set_xlabel("Predicted label")
-    ax.set_ylabel("True label")
-
-    ax.set_xticks(range(len(labels)))
-    ax.set_yticks(range(len(labels)))
+    # Configurazione assi
+    tick_marks = np.arange(len(labels))
+    ax.set_xticks(tick_marks)
+    ax.set_yticks(tick_marks)
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
+    ax.set_ylabel('True label')
+    ax.set_xlabel('Predicted label')
 
-    # Valori nelle celle
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            value = (
-                f"{cm_plot[i, j]:.2f}" if normalize else f"{int(cm[i, j])}"
-            )
-            ax.text(j, i, value, ha="center", va="center")
+    # Inserimento testo nelle celle (ottimizzato con itertools)
+    thresh = cm_plot.max() / 2.0
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        val = cm_plot[i, j]
+        label_text = f"{val:.2f}" if normalize else f"{int(val)}"
 
-    fig.colorbar(im, ax=ax)
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=200)
-    plt.close(fig)
+        # Colore testo adattivo (bianco su scuro, nero su chiaro)
+        text_color = "white" if val > thresh else "black"
+
+        ax.text(j, i, label_text, horizontalalignment="center", color=text_color)
+
+    _save_and_close(fig, save_path)
 
 
 def plot_roc_curve(
@@ -102,66 +92,43 @@ def plot_roc_curve(
         tpr: np.ndarray,
         auc_value: float,
         title: str,
-        save_path: str
+        save_path: PathType
 ) -> None:
     """
-    Visualizza e salva la curva ROC.
-
-    :param fpr: Vettore di False Positive Rate.
-    :param tpr: Vettore di True Positive Rate.
-    :param auc_value: Valore dell'AUC da mostrare in legenda.
-    :param title: Titolo del grafico.
-    :param save_path: Percorso del file di output.
-    :return: None.
+    Genera e salva la curva ROC con il valore AUC.
     """
+    fig, ax = _prepare_plot(save_path, title)
 
-    _ensure_output_dir(save_path)
+    ax.plot(fpr, tpr, color='darkorange', lw=2, label=f'AUC = {auc_value:.3f}')
+    ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
 
-    fig, ax = plt.subplots()
+    # FIX: Passiamo argomenti separati (float) invece di una lista
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.05)
 
-    ax.plot(fpr, tpr, label=f"AUC = {auc_value:.3f}")
-    ax.plot([0, 1], [0, 1], linestyle="--", label="Random classifier")
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.legend(loc="lower right")
 
-    ax.set_title(title)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.legend()
-
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=200)
-    plt.close(fig)
+    _save_and_close(fig, save_path)
 
 
 def plot_metric_distribution(
-        values: List[float],
+        values: list[float] | np.ndarray,
         metric_name: str,
         title: str,
-        save_path: str,
+        save_path: PathType,
         bins: int = 10
 ) -> None:
     """
-    Visualizza e salva la distribuzione di una metrica di valutazione
-    calcolata su più esperimenti (ad esempio su diversi fold di cross-validation).
-
-    La funzione rappresenta graficamente i valori ottenuti tramite le funzioni di evaluator.py,
-    permettendo di analizzare la variabilità delle prestazioni del modello.
-    :param values: Lista dei valori della metrica.
-    :param metric_name: Nome della metrica (asse x).
-    :param title: Titolo del grafico.
-    :param save_path: Percorso del file di output.
-    :param bins: Numero di bin dell'istogramma.
-    :return: None.
+    Genera istogramma per la distribuzione di una metrica (es. su K-Fold).
     """
+    fig, ax = _prepare_plot(save_path, title)
 
-    _ensure_output_dir(save_path)
+    ax.hist(values, bins=bins, color='skyblue', edgecolor='black', alpha=0.7)
 
-    fig, ax = plt.subplots()
-
-    ax.hist(values, bins=bins, edgecolor="black")
-    ax.set_title(title)
     ax.set_xlabel(metric_name)
-    ax.set_ylabel("Frequency")
+    ax.set_ylabel('Frequency')
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
 
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=200)
-    plt.close(fig)
+    _save_and_close(fig, save_path)
