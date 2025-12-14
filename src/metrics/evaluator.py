@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -9,14 +10,12 @@ import numpy as np
 @dataclass(frozen=True)
 class ConfusionCounts:
     """
-    La classe viene utilizzata come struttura dati di supporto per il calcolo
-    delle metriche di valutazione del classificatore, evitando la gestione
-    separata dei singoli valori TP, TN, FP e FN.
-    :param tp : Veri Positivi (True Positives).
-    :param tn : Veri Negativi (True Negatives).
-    :param fp : Falsi Positivi (False Positives).
-    :param fn : Falsi Negativi (False Negatives).
+    Struttura dati per memorizzare i conteggi della Matrice di Confusione.
 
+    :param tp: Veri Positivi (True Positives).
+    :param tn: Veri Negativi (True Negatives).
+    :param fp: Falsi Positivi (False Positives).
+    :param fn: Falsi Negativi (False Negatives).
     """
     tp: int
     tn: int
@@ -26,130 +25,79 @@ class ConfusionCounts:
 
 def confusion_counts(y_true, y_pred, pos_label: int = 1) -> ConfusionCounts:
     """
-    Calcola TP, TN, FP, FN in uno scenario di classificazione binaria.
-
-    Note:
-        In molti setup del dataset Breast Cancer Wisconsin:
-        - classe 1 = benigno (negativo)
-        - classe 0 = maligno (positivo)
-        `pos_label` indica il valore della classe positiva.
+    Calcola TP, TN, FP, FN per classificazione binaria.
 
     :param y_true: Etichette vere (ground truth).
     :param y_pred: Etichette previste dal modello.
-    :param pos_label: Valore da considerare come classe positiva.
-    :return: Conte della matrice di confusione (tp, tn, fp, fn).
-
+    :param pos_label: Valore della classe positiva (default: 1).
+    :return: Conteggi della matrice di confusione.
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
-    """
-        In caso di lunghezze diverse, il calcolo dei conteggi TP, TN, FP, FN
-        risulterebbe logicamente errato o potrebbe generare comportamenti
-        indesiderati dovuti al broadcasting di NumPy.
-        
-    """
+
     if y_true.shape[0] != y_pred.shape[0]:
         raise ValueError(
             "y_true e y_pred devono avere la stessa lunghezza "
             f"(ottenuti {y_true.shape[0]} e {y_pred.shape[0]})."
         )
-
-    # Un dataset vuoto rende prive di significato le metriche di valutazione
-    if y_true.shape[0] == 0:
+    if y_true.size == 0:
         raise ValueError("Impossibile calcolare le metriche: y_true è vuoto.")
 
-    tp = int(np.sum((y_true == pos_label) & (y_pred == pos_label)))
-    tn = int(np.sum((y_true != pos_label) & (y_pred != pos_label)))
-    fp = int(np.sum((y_true != pos_label) & (y_pred == pos_label)))
-    fn = int(np.sum((y_true == pos_label) & (y_pred != pos_label)))
+    # Uso di np.sum sui booleani per conteggiare
+    tp = np.sum((y_true == pos_label) & (y_pred == pos_label))
+    tn = np.sum((y_true != pos_label) & (y_pred != pos_label))
+    fp = np.sum((y_true != pos_label) & (y_pred == pos_label))
+    fn = np.sum((y_true == pos_label) & (y_pred != pos_label))
 
-    return ConfusionCounts(tp=tp, tn=tn, fp=fp, fn=fn)
+    return ConfusionCounts(tp=int(tp), tn=int(tn), fp=int(fp), fn=int(fn))
 
 
 def _safe_div(num: float, den: float, zero_value: float = 0.0) -> float:
     """
-    Controlla che la divisione avviene in modo sicuro, evitando errori di divisione per zero.
-    :param num: Numeratore.
-    :param den: Denominatore.
-    :param zero_value: Valore restituito quando den == 0.
-    :return: num/den se den != 0 altrimenti zero_value.
+    Esegue la divisione in modo sicuro, restituendo `zero_value` (default 0.0) se il denominatore è zero.
     """
-    return float(num / den) if den != 0 else float(zero_value)
+    # Sopprimiamo il RuntimeWarning di NumPy su divisione per zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        result = np.divide(num, den)
+
+    return float(result) if den != 0 else float(zero_value)
 
 
 def accuracy_rate(c: ConfusionCounts) -> float:
-    """
-    Calcola l'Accuracy = (TP + TN) / (TP + TN + FP + FN).
-
-    :param c: Conte della matrice di confusione.
-    :return: Accuratezza in [0, 1].
-    """
-    return _safe_div(c.tp + c.tn, c.tp + c.tn + c.fp + c.fn)
+    """Calcola l'Accuracy = (TP + TN) / Totale."""
+    total = c.tp + c.tn + c.fp + c.fn
+    return _safe_div(c.tp + c.tn, total)
 
 
 def error_rate(c: ConfusionCounts) -> float:
-    """
-    Calcola l'Error Rate = 1 - Accuracy.
-
-    :param c: Conte della matrice di confusione.
-    :return: Tasso di errore in [0, 1].
-
-    """
+    """Calcola l'Error Rate = 1 - Accuracy."""
     return 1.0 - accuracy_rate(c)
 
 
 def sensitivity(c: ConfusionCounts) -> float:
-    """
-    Calcola la Sensitivity (Recall della classe positiva) = TP / (TP + FN).
-
-    :param c: Conte della matrice di confusione.
-    :return: Sensibilità in [0, 1].
-
-    """
+    """Calcola la Sensitivity (Recall) = TP / (TP + FN)."""
     return _safe_div(c.tp, c.tp + c.fn)
 
 
 def specificity(c: ConfusionCounts) -> float:
-    """
-    Calcola la Specificity (Recall della classe negativa) = TN / (TN + FP).
-
-    :param c: Conte della matrice di confusione.
-    :return: Specificità in [0, 1].
-
-    """
+    """Calcola la Specificity = TN / (TN + FP)."""
     return _safe_div(c.tn, c.tn + c.fp)
 
 
 def geometric_mean(c: ConfusionCounts) -> float:
-    """
-    Calcola la G-Mean = sqrt(Sensitivity * Specificity).
-
-    :param c: Conte della matrice di confusione.
-    :return: Media geometrica in [0, 1].
-
-    """
-    return float(np.sqrt(sensitivity(c) * specificity(c)))
+    """Calcola la G-Mean = sqrt(Sensitivity * Specificity)."""
+    sens = sensitivity(c)
+    spec = specificity(c)
+    return float(np.sqrt(sens * spec))
 
 
 def precision(c: ConfusionCounts) -> float:
-    """
-    Calcola la Precision = TP / (TP + FP).
-
-    :param c: Conte della matrice di confusione.
-    :return: Precision in [0, 1].
-
-    """
+    """Calcola la Precision = TP / (TP + FP)."""
     return _safe_div(c.tp, c.tp + c.fp)
 
 
 def f1_score(c: ConfusionCounts) -> float:
-    """
-    Calcola l'F1-Score = 2 * (Precision * Recall) / (Precision + Recall).
-
-    :param c: Conte della matrice di confusione.
-    :return: F1-Score in [0, 1].
-
-    """
+    """Calcola l'F1-Score (media armonica tra Precision e Sensitivity)."""
     p = precision(c)
     r = sensitivity(c)
     return _safe_div(2 * p * r, p + r)
@@ -162,78 +110,51 @@ def roc_curve_manual(
         neg_label: int = 0
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Costruisce la curva ROC (FPR, TPR) variando soglie su uno score continuo.
+    Costruisce la curva ROC (FPR vs TPR) variando soglie sullo score continuo.
 
-    Uso tipico in questo progetto: passare uno score continuo del KNN, ad es.:
-    score = (#vicini_positivi) / k.
-
-    Schema di implementazione:
-    1) Ordina i campioni per score decrescente.
-    2) Usa i valori di score unici come soglie (+inf per includere il punto iniziale).
-    3) Per ogni soglia, assegna:
-       - positivo se score >= soglia
-       - negativo altrimenti
-       quindi calcola TPR e FPR.
-
-    :param y_true: Etichette vere (ground truth).
-    :param y_score: Score continui (più alto => più probabile positivo).
+    :param y_true: Etichette vere.
+    :param y_score: Score continui (probabilità, distanza, etc.).
     :param pos_label: Valore da considerare come classe positiva.
-    :param neg_label: Valore da considerare come classe negativa (usato nelle predizioni a soglia).
+    :param neg_label: Valore da considerare come classe negativa.
     :return: (fpr, tpr, thresholds).
-
     """
     y_true = np.asarray(y_true)
     y_score = np.asarray(y_score, dtype=float)
 
-    # Ordinamento decrescente per costruzione standard della ROC
+    # 1. Ordinamento decrescente per score
     order = np.argsort(-y_score)
-    y_true = y_true[order]
-    y_score = y_score[order]
+    y_true_sorted = y_true[order]
+    y_score_sorted = y_score[order]
 
-    # Le soglie vengono ordinate in modo decrescente per seguire
-    # la costruzione standard della curva ROC:
-    # partendo da una soglia infinita (TPR=0, FPR=0) fino ai valori
-    # più bassi dello score continuo.
-    thresholds = np.r_[np.inf, np.unique(y_score)[::-1]]
+    # 2. Definizione delle soglie: include +inf e i valori unici decrescenti
+    thresholds = np.r_[np.inf, np.unique(y_score_sorted)[::-1]]
 
-    # Liste per memorizzare i valori di True Positive Rate (TPR)
-    # e False Positive Rate (FPR) per ciascuna soglia
     tpr_list: List[float] = []
     fpr_list: List[float] = []
 
-    # Numero totale di campioni positivi reali (tot_positive_samples)
-    # e di campioni negativi reali (tot_negative_samples)
-    tot_positive_samples = int(np.sum(y_true == pos_label))
-    tot_negative_samples = int(np.sum(y_true == neg_label))
+    tot_positive = int(np.sum(y_true == pos_label))
+    tot_negative = int(np.sum(y_true == neg_label))
 
+    # 3. Calcolo dei tassi per ogni soglia
     for thr in thresholds:
-        # Predizione binaria ottenuta applicando la soglia corrente:
-        # un campione è classificato come positivo se y_score >= soglia,
-        # altrimenti viene classificato come negativo
-        y_pred_thr = np.where(y_score >= thr, pos_label, neg_label)
+        # Predizione binaria: Positivo se score >= soglia
+        y_pred_thr = np.where(y_score_sorted >= thr, pos_label, neg_label)
 
-        # Calcolo dei conteggi della matrice di confusione
-        c = confusion_counts(y_true, y_pred_thr, pos_label=pos_label)
+        # Calcolo conteggi
+        c = confusion_counts(y_true_sorted, y_pred_thr, pos_label=pos_label)
 
-        # Calcolo dei tassi:
-        # TPR (True Positive Rate) = TP / tot_positive_samples
-        # FPR (False Positive Rate) = FP / tot_negative_samples
-        tpr_list.append(_safe_div(c.tp, tot_positive_samples))
-        fpr_list.append(_safe_div(c.fp, tot_negative_samples))
+        # Calcolo dei tassi
+        tpr_list.append(_safe_div(c.tp, tot_positive))
+        fpr_list.append(_safe_div(c.fp, tot_negative))
 
-    # Restituisce FPR, TPR e l'insieme delle soglie utilizzate
     return np.array(fpr_list), np.array(tpr_list), np.array(thresholds)
 
 
 def calculate_auc(fpr: np.ndarray, tpr: np.ndarray) -> float:
     """
-    Calcola l'AUC con integrazione ai trapezi.
-
-    :param fpr: Vettore di False Positive Rate.
-    :param tpr: Vettore di True Positive Rate.
-    :return: Area sotto la curva ROC (AUC) in [0, 1].
-
+    Calcola l'Area Sotto la Curva ROC (AUC) tramite la regola del trapezio (integrazione).
     """
+    # Assicura che FPR sia ordinato per l'integrazione
     sorted_indices = np.argsort(fpr)
     return float(np.trapezoid(tpr[sorted_indices], fpr[sorted_indices]))
 
@@ -247,36 +168,25 @@ def evaluate_metrics(
         neg_label: int = 0
 ) -> Dict[str, float]:
     """
-    Calcola un insieme di metriche di valutazione del classificatore.
+    Calcola un insieme specificato di metriche di valutazione del classificatore.
 
-    Metriche disponibili:
-    - accuracy
-    - error
-    - sensitivity
-    - specificity
-    - precision
-    - f1
-    - gmean
-    - auc (richiede y_score)
+    Metriche disponibili: 'accuracy', 'error', 'sensitivity', 'specificity',
+    'precision', 'f1', 'gmean', 'auc'.
 
     :param y_true: Etichette vere.
     :param y_pred: Etichette predette.
-    :param y_score: Score continuo (necessario per AUC).
-    :param metrics: Lista di metriche da calcolare.
-    :param pos_label: Classe positiva.
-    :param neg_label: Classe negativa.
+    :param y_score: Score continuo (necessario solo per 'auc').
+    :param metrics: Lista di metriche da calcolare (default: tutte).
+    :param pos_label: Valore da considerare come classe positiva.
+    :param neg_label: Valore da considerare come classe negativa.
     :return: Dizionario {nome_metrica: valore}.
-
     """
-    # Questa variabile mi serve a evitare errori legati a nomi di metriche errati.
     allowed_metrics = {
-        "accuracy", "error",
-        "sensitivity", "specificity",
-        "precision", "f1",
-        "gmean", "auc"}
+        "accuracy", "error", "sensitivity", "specificity",
+        "precision", "f1", "gmean", "auc"}
 
     if metrics is None:
-        metrics = ["accuracy", "error", "sensitivity", "specificity", "precision", "f1", "gmean", "auc"]
+        metrics = list(allowed_metrics)
 
     unknown = set(metrics) - allowed_metrics
     if unknown:
@@ -285,20 +195,20 @@ def evaluate_metrics(
     c = confusion_counts(y_true, y_pred, pos_label=pos_label)
     out: Dict[str, float] = {}
 
-    if "accuracy" in metrics:
-        out["accuracy"] = accuracy_rate(c)
-    if "error" in metrics:
-        out["error"] = error_rate(c)
-    if "sensitivity" in metrics:
-        out["sensitivity"] = sensitivity(c)
-    if "specificity" in metrics:
-        out["specificity"] = specificity(c)
-    if "precision" in metrics:
-        out["precision"] = precision(c)
-    if "f1" in metrics:
-        out["f1"] = f1_score(c)
-    if "gmean" in metrics:
-        out["gmean"] = geometric_mean(c)
+    # Calcolo delle metriche scalari
+    metric_funcs = {
+        "accuracy": accuracy_rate, "error": error_rate,
+        "sensitivity": sensitivity, "specificity": specificity,
+        "precision": precision, "f1": f1_score,
+        "gmean": geometric_mean
+    }
+
+    # Ottimizzazione: Calcola solo le metriche richieste
+    for name in metrics:
+        if name != "auc" and name in metric_funcs:
+            out[name] = metric_funcs[name](c)
+
+    # Calcolo AUC (se richiesto)
     if "auc" in metrics:
         if y_score is None:
             raise ValueError("AUC richiesta ma y_score è None.")
