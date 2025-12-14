@@ -1,106 +1,132 @@
 import sys
 import numpy as np
+import traceback
+from pathlib import Path
 
-# Aggiunge la directory corrente al path per permettere l'import dei moduli locali
-sys.path.append(".")
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
 
+# Import moduli locali
 from src.preprocessing.loader import DataLoader
 from src.knn.classifier import KNNClassifier
 from src.validation.holdout import HoldoutValidation
+from src.metrics.plotter import plot_confusion_matrix, plot_roc_curve
 
 
-def execute_holdout_validation(x: np.ndarray, y: np.ndarray) -> None:
+def print_metrics_report(metrics: dict):
+    """Stampa una tabella pulita delle metriche."""
+    print("\n" + "=" * 40)
+    print(f"{'METRICA':<20} | {'VALORE':<10}")
+    print("-" * 40)
+    for name, value in metrics.items():
+        # Formattazione: prima lettera maiuscola, 4 decimali
+        print(f"{name.replace('_', ' ').capitalize():<20} | {value:.4f}")
+    print("=" * 40 + "\n")
+
+
+def execute_holdout_validation(x: np.ndarray, y: np.ndarray, output_dir: Path) -> None:
     """
-    Esegue la pipeline di validazione Holdout sul dataset.
-
-    Istanzia il classificatore KNN e il validatore Holdout, esegue il training
-    e il testing su uno split 80/20, stampando l'accuratezza finale.
-    :param x: Matrice delle feature.
-    :param y: Vettore delle etichette target.
+    Esegue la pipeline di validazione Holdout, stampa i risultati e salva i grafici.
     """
-    print("\n=== VALIDAZIONE HOLDOUT ===")
+    print("\n=== AVVIO VALIDAZIONE HOLDOUT ===")
 
-    # Configurazione parametri
+    # 1. Configurazione
     k_neighbors = 5
     metric = "euclidean"
     split_ratio = 0.2
     seed = 42
 
+    print(f"Configurazione: KNN(k={k_neighbors}, dist='{metric}') | Split: {split_ratio:.0%}")
+
+    # 2. Istanziazione
     knn_model = KNNClassifier(k=k_neighbors, distance=metric, random_state=seed)
     validator = HoldoutValidation(test_size=split_ratio, random_state=seed)
 
-    print(f"Configurazione: KNN(k={k_neighbors}, dist='{metric}') | Split Test: {split_ratio:.0%}")
-
     try:
-        accuracy = validator.validate(knn_model, x, y)
-        print(f"Risultato (Accuratezza): {accuracy:.4f}")
+        # 3. Esecuzione (Il metodo ora RITORNA i dati, non stampa)
+        results = validator.validate(knn_model, x, y)
+
+        # 4. Reporting Metriche
+        print_metrics_report(results["metrics"])
+
+        # 5. Generazione Grafici
+        # Creiamo la cartella output se non esiste
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Plot Matrice di Confusione
+        plot_confusion_matrix(
+            cm=results["confusion_matrix"],
+            labels=["Benign (0)", "Malignant (1)"],
+            title=f"Confusion Matrix (KNN k={k_neighbors})",
+            save_path=str(output_dir / "holdout_confusion_matrix.png"),
+            normalize=False
+        )
+
+        plot_confusion_matrix(
+            cm=results["confusion_matrix"],
+            labels=["Malignant (4)", "Benign (2)"],
+            title="Confusion Matrix (Normalized)",
+            save_path=str(output_dir / "test1_confusion_matrix_normalized.png"),
+            normalize=True
+        )
+
+        # Plot Curva ROC
+        fpr, tpr = results["roc_data"]
+        plot_roc_curve(
+            fpr=fpr,
+            tpr=tpr,
+            auc_value=results["metrics"]["auc"],
+            title=f"ROC Curve (KNN k={k_neighbors})",
+            save_path=str(output_dir / "holdout_roc_curve.png")
+        )
+
+        print(f"✅ Grafici salvati in: {output_dir}")
+
     except Exception as e:
-        print(f"Errore durante la validazione: {e}")
-
-
-def execute_manual_knn_tests(X: np.ndarray, y: np.ndarray) -> None:
-    """
-    Esegue test rapidi di inferenza su un sottoinsieme di dati variando la metrica.
-
-    Itera su diverse metriche di distanza (Euclidea, Manhattan, Chebyshev, Cosine)
-    per verificare che il modello produca predizioni senza errori a runtime.
-
-    :param X: Matrice delle feature.
-    :param y: Vettore delle etichette target.
-    """
-    print("\n=== TEST COMPARATIVO METRICHE ===")
-
-    # Subset per test rapido (primi 10 campioni)
-    sample_X = X[:10]
-    sample_y = y[:10]
-    metrics = ["euclidean", "manhattan", "chebyshev", "cosine"]
-
-    for metric in metrics:
-        try:
-            # Istanzia e addestra il modello per la metrica corrente
-            clf = KNNClassifier(k=5, distance=metric, random_state=42)
-            clf.fit(X, y)
-
-            # Inferenza
-            preds = clf.predict(sample_X)
-            acc = np.mean(preds == sample_y)
-
-            print(f"Metrica: {metric:<10} | Accuratezza (Top 10): {acc:.1f}")
-        except Exception as e:
-            print(f"Metrica: {metric:<10} | Errore: {e}")
+        print(f"❌ Errore durante la validazione:")
+        traceback.print_exc()
 
 
 def main():
     """
     Entry point dello script.
-    Carica i dati, esegue la validazione e salva il dataset pulito.
     """
-    input_csv = "../data/version_1.csv"
-    output_csv = "../data/version_1_clean.csv"
+    # Definizione percorsi relativi alla posizione dello script
+    data_dir = BASE_DIR / "data"
+    output_plots_dir = BASE_DIR / "outputs" / "plots"
 
-    print("--- Avvio Pipeline ---")
+    input_csv = data_dir / "version_1.csv"
+    output_clean_csv = data_dir / "version_1_clean.csv"
 
+    print("--- Pipeline Iniziata ---")
+
+    # 1. Caricamento Dati
     try:
-        loader = DataLoader(path=input_csv)
+        if not input_csv.exists():
+            raise FileNotFoundError(f"File non trovato: {input_csv}")
+
+        loader = DataLoader(path=str(input_csv))
         X, y, df_clean = loader.load()
 
-        print(f"Dataset caricato: {X.shape[0]} campioni, {X.shape[1]} feature")
-        print(f"Distribuzione target: {np.unique(y, return_counts=True)}")
+        print(f"Dataset caricato: {X.shape[0]} righe, {X.shape[1]} colonne")
+        unique, counts = np.unique(y, return_counts=True)
+        print(f"Distribuzione target: {dict(zip(unique, counts))}")
 
     except Exception as e:
-        print(f"ERRORE CRITICO: Impossibile caricare '{input_csv}'.\nDettagli: {e}")
+        print(f"❌ ERRORE CRITICO nel caricamento dati: {e}")
         return
 
-    # Esecuzione pipeline
-    execute_holdout_validation(X, y)
-    execute_manual_knn_tests(X, y)
+    # 2. Esecuzione Validazione
+    execute_holdout_validation(X, y, output_dir=output_plots_dir)
 
-    # Salvataggio output
+    # 3. Salvataggio Dataset Pulito
     try:
-        df_clean.to_csv(output_csv, index=False)
-        print(f"\nDataset pulito salvato in: {output_csv}")
+        df_clean.to_csv(output_clean_csv, index=False)
+        print(f"\nDataset pulito salvato in: {output_clean_csv}")
     except Exception as e:
-        print(f"Errore nel salvataggio del CSV: {e}")
+        print(f"⚠️ Errore nel salvataggio del CSV: {e}")
+
+    print("\n--- Pipeline Terminata ---")
 
 
 if __name__ == "__main__":
