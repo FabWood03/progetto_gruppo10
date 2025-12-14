@@ -187,10 +187,11 @@ def roc_curve_manual(
     y_true = y_true[order]
     y_score = y_score[order]
 
-    # Soglie candidate per la costruzione della ROC:
-    # +inf consente di includere il punto iniziale (TPR = 0, FPR = 0),
-    # mentre i valori distinti di y_score rappresentano tutte le soglie significative.
-    thresholds = np.r_[np.inf, np.unique(y_score)]
+    # Le soglie vengono ordinate in modo decrescente per seguire
+    # la costruzione standard della curva ROC:
+    # partendo da una soglia infinita (TPR=0, FPR=0) fino ai valori
+    # più bassi dello score continuo.
+    thresholds = np.r_[np.inf, np.unique(y_score)[::-1]]
 
     # Liste per memorizzare i valori di True Positive Rate (TPR)
     # e False Positive Rate (FPR) per ciascuna soglia
@@ -200,7 +201,7 @@ def roc_curve_manual(
     # Numero totale di campioni positivi reali (tot_positive_samples)
     # e di campioni negativi reali (tot_negative_samples)
     tot_positive_samples = int(np.sum(y_true == pos_label))
-    tot_negative_samples = int(np.sum(y_true != pos_label))
+    tot_negative_samples = int(np.sum(y_true == neg_label))
 
     for thr in thresholds:
         # Predizione binaria ottenuta applicando la soglia corrente:
