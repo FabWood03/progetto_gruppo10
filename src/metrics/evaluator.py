@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 
@@ -22,14 +24,14 @@ class ConfusionCounts:
     fn: int
 
 
-def confusion_counts(y_true, y_pred, pos_label: int = 4) -> ConfusionCounts:
+def confusion_counts(y_true, y_pred, pos_label: int = 1) -> ConfusionCounts:
     """
     Calcola TP, TN, FP, FN in uno scenario di classificazione binaria.
 
     Note:
         In molti setup del dataset Breast Cancer Wisconsin:
-        - classe 2 = benigno (negativo)
-        - classe 4 = maligno (positivo)
+        - classe 1 = benigno (negativo)
+        - classe 0 = maligno (positivo)
         `pos_label` indica il valore della classe positiva.
 
     :param y_true: Etichette vere (ground truth).
@@ -128,6 +130,7 @@ def geometric_mean(c: ConfusionCounts) -> float:
     """
     return float(np.sqrt(sensitivity(c) * specificity(c)))
 
+
 def precision(c: ConfusionCounts) -> float:
     """
     Calcola la Precision = TP / (TP + FP).
@@ -153,10 +156,10 @@ def f1_score(c: ConfusionCounts) -> float:
 
 
 def roc_curve_manual(
-    y_true,
-    y_score,
-    pos_label: int = 4,
-    neg_label: int = 2
+        y_true,
+        y_score,
+        pos_label: int = 1,
+        neg_label: int = 0
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Costruisce la curva ROC (FPR, TPR) variando soglie su uno score continuo.
@@ -234,13 +237,14 @@ def calculate_auc(fpr: np.ndarray, tpr: np.ndarray) -> float:
     sorted_indices = np.argsort(fpr)
     return float(np.trapezoid(tpr[sorted_indices], fpr[sorted_indices]))
 
+
 def evaluate_metrics(
-    y_true,
-    y_pred,
-    y_score: Optional[np.ndarray] = None,
-    metrics: Optional[List[str]] = None,
-    pos_label: int = 4,
-    neg_label: int = 2
+        y_true,
+        y_pred,
+        y_score: Optional[np.ndarray] = None,
+        metrics: Optional[List[str]] = None,
+        pos_label: int = 1,
+        neg_label: int = 0
 ) -> Dict[str, float]:
     """
     Calcola un insieme di metriche di valutazione del classificatore.
@@ -264,7 +268,7 @@ def evaluate_metrics(
     :return: Dizionario {nome_metrica: valore}.
 
     """
-    #Questa variabile mi serve a evitare errori legati a nomi di metriche errati.
+    # Questa variabile mi serve a evitare errori legati a nomi di metriche errati.
     allowed_metrics = {
         "accuracy", "error",
         "sensitivity", "specificity",
@@ -272,7 +276,7 @@ def evaluate_metrics(
         "gmean", "auc"}
 
     if metrics is None:
-        metrics = ["accuracy", "error", "sensitivity", "specificity","precision","f1", "gmean","auc"]
+        metrics = ["accuracy", "error", "sensitivity", "specificity", "precision", "f1", "gmean", "auc"]
 
     unknown = set(metrics) - allowed_metrics
     if unknown:

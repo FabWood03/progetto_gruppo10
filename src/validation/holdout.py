@@ -1,5 +1,11 @@
 import numpy as np
 
+from src.metrics.evaluator import (
+    confusion_counts,
+    roc_curve_manual,
+    calculate_auc,
+    evaluate_metrics,
+)
 from .base import ValidationStrategy
 
 
@@ -18,73 +24,60 @@ class HoldoutValidation(ValidationStrategy):
         self.test_size = test_size
         self.rng = np.random.default_rng(random_state)
 
-    def split(self, x: np.ndarray, y: np.ndarray):
+    def validate(self, model, X: np.ndarray, y: np.ndarray) -> dict:
         """
-        Divide il dataset in training set e test set secondo la strategia Holdout.
-
-        :param x: Dati di input (array 2D).
-        :param y: Etichette di output (array 1D).
-        :return: X_train, X_test, y_train, y_test
+        Esegue la validazione Holdout e restituisce i risultati grezzi.
+        :return: Un dizionario contenente metriche, dati ROC e matrice di confusione.
         """
-        x = np.asarray(x)
-        y = np.asarray(y)
-
-        if x.shape[0] != y.shape[0]:
-            raise ValueError(
-                f"Errore dimensioni: X ha {x.shape[0]} righe, y ne ha {y.shape[0]}."
-            )
-
-        n_samples = x.shape[0]
-        n_test = int(n_samples * self.test_size)
-
-        indices = self.rng.permutation(n_samples)
-
-        test_idx = indices[:n_test]
-        train_idx = indices[n_test:]
-
-        X_train = x[train_idx]
-        X_test = x[test_idx]
-        y_train = y[train_idx]
-        y_test = y[test_idx]
-
-        return X_train, X_test, y_train, y_test
-
-    def validate(self, model, X: np.ndarray, y: np.ndarray) -> float:
-        """
-        Esegue la validazione Holdout.
-        :param model: Il modello da validare (deve avere metodi .fit() e .predict()).
-        :param X: I dati di input (array 2D).
-        :param y: Le etichette di output (array 1D).
-        :return: Metriche di valutazione.
-        """
-        # Conversione sicura in array NumPy
+        # --- 1. PREPARAZIONE DATI ---
         X = np.asarray(X)
         y = np.asarray(y)
 
-        # Controllo integrità dimensioni
         if X.shape[0] != y.shape[0]:
-            raise ValueError(f"Errore dimensioni: X ha {X.shape[0]} righe, y ne ha {y.shape[0]}.")
+            raise ValueError(f"X e y hanno dimensioni diverse: {X.shape[0]} vs {y.shape[0]}")
 
-        # Controllo validità modello
-        if not (hasattr(model, "fit") and hasattr(model, "predict")):
-            raise TypeError("Il modello fornito non è valido: mancano i metodi .fit() o .predict()")
-
+        # Split Train/Test
         n_samples = X.shape[0]
         n_test = int(n_samples * self.test_size)
-
-        # Shuffle efficiente
         indices = self.rng.permutation(n_samples)
 
-        # Split e Creazione dataset
-        test_idx = indices[:n_test]
-        train_idx = indices[n_test:]
-
+        train_idx, test_idx = indices[n_test:], indices[:n_test]
         X_train, y_train = X[train_idx], y[train_idx]
         X_test, y_test = X[test_idx], y[test_idx]
 
-        # Pipeline esecuzione
+        # --- 2. TRAINING & INFERENCE ---
         model.fit(X_train, y_train)
+
         y_pred = model.predict(X_test)
 
-        # Calcolo metriche
-        return float(np.mean(y_test == y_pred))
+        y_probs = model.predict_proba(X_test)
+        y_score = y_probs[:, 1]
+
+        # --- 3. CALCOLO METRICHE ---
+        # Calcolo curve ROC
+        fpr, tpr, _ = roc_curve_manual(y_test, y_score)
+        auc_value = calculate_auc(fpr, tpr)
+
+        # Calcolo tutte le metriche scalari
+        metrics = evaluate_metrics(
+            y_true=y_test,
+            y_pred=y_pred,
+            y_score=y_score,
+            metrics=["accuracy", "error", "sensitivity", "specificity",
+                     "precision", "f1", "gmean"]
+        )
+
+        metrics["auc"] = auc_value
+
+        # Dati per la matrice di confusione
+        # Ricaviamo i conteggi raw per poterli plottare fuori
+        c = confusion_counts(y_test, y_pred)
+        cm_matrix = np.array([[c.tp, c.fn], [c.fp, c.tn]])
+
+        return {
+            "metrics": metrics,
+            "roc_data": (fpr, tpr),
+            "confusion_matrix": cm_matrix,
+            "y_test": y_test,
+            "y_pred": y_pred
+        }

@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import List
+
 import os
-import numpy as np
+from typing import List
+
 import matplotlib.pyplot as plt
+import numpy as np
+
 
 def _ensure_output_dir(save_path: str) -> None:
     """
@@ -29,16 +32,12 @@ def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
     )
 
 
-# ============================================================
-# CONFUSION MATRIX
-# ============================================================
-
 def plot_confusion_matrix(
-    cm: np.ndarray,
-    labels: List[str],
-    title: str,
-    save_path: str,
-    normalize: bool = False
+        cm: np.ndarray,
+        labels: List[str],
+        title: str,
+        save_path: str,
+        normalize: bool = False
 ) -> None:
     """
     Visualizza e salva la matrice di confusione come immagine.
@@ -46,8 +45,8 @@ def plot_confusion_matrix(
     rappresentano le classi predette.
 
     Per il dataset Breast Cancer:
-    - classe 4 = Maligno (positivo)
-    - classe 2 = Benigno (negativo)
+    - classe 1 = Maligno (positivo)
+    - classe 0 = Benigno (negativo)
 
     :param cm: Matrice di confusione (tipicamente 2x2).
     :param labels: Etichette delle classi da mostrare sugli assi.
@@ -97,12 +96,13 @@ def plot_confusion_matrix(
     fig.savefig(save_path, dpi=200)
     plt.close(fig)
 
+
 def plot_roc_curve(
-    fpr: np.ndarray,
-    tpr: np.ndarray,
-    auc_value: float,
-    title: str,
-    save_path: str
+        fpr: np.ndarray,
+        tpr: np.ndarray,
+        auc_value: float,
+        title: str,
+        save_path: str
 ) -> None:
     """
     Visualizza e salva la curva ROC.
@@ -131,12 +131,13 @@ def plot_roc_curve(
     fig.savefig(save_path, dpi=200)
     plt.close(fig)
 
+
 def plot_metric_distribution(
-    values: List[float],
-    metric_name: str,
-    title: str,
-    save_path: str,
-    bins: int = 10
+        values: List[float],
+        metric_name: str,
+        title: str,
+        save_path: str,
+        bins: int = 10
 ) -> None:
     """
     Visualizza e salva la distribuzione di una metrica di valutazione
