@@ -18,6 +18,37 @@ class HoldoutValidation(ValidationStrategy):
         self.test_size = test_size
         self.rng = np.random.default_rng(random_state)
 
+    def split(self, x: np.ndarray, y: np.ndarray):
+        """
+        Divide il dataset in training set e test set secondo la strategia Holdout.
+
+        :param x: Dati di input (array 2D).
+        :param y: Etichette di output (array 1D).
+        :return: X_train, X_test, y_train, y_test
+        """
+        x = np.asarray(x)
+        y = np.asarray(y)
+
+        if x.shape[0] != y.shape[0]:
+            raise ValueError(
+                f"Errore dimensioni: X ha {x.shape[0]} righe, y ne ha {y.shape[0]}."
+            )
+
+        n_samples = x.shape[0]
+        n_test = int(n_samples * self.test_size)
+
+        indices = self.rng.permutation(n_samples)
+
+        test_idx = indices[:n_test]
+        train_idx = indices[n_test:]
+
+        X_train = x[train_idx]
+        X_test = x[test_idx]
+        y_train = y[train_idx]
+        y_test = y[test_idx]
+
+        return X_train, X_test, y_train, y_test
+
     def validate(self, model, X: np.ndarray, y: np.ndarray) -> float:
         """
         Esegue la validazione Holdout.
