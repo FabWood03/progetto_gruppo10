@@ -1,8 +1,9 @@
 import sys
 import traceback
-import numpy as np
 from pathlib import Path
 from time import time
+
+import numpy as np
 
 # --- 1. SETUP AMBIENTE ---
 BASE_DIR = Path(__file__).resolve().parent.parent
