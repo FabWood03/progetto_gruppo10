@@ -6,10 +6,7 @@ import matplotlib.pyplot as plt
 
 def _ensure_output_dir(save_path: str) -> None:
     """
-    Crea la directory di output associata al percorso del file, se non esiste.
-
-    :param save_path: Percorso del file di output.
-    :return: None.
+    Crea la directory di output se non esiste.
     """
     output_dir = os.path.dirname(save_path)
     if output_dir:
@@ -18,14 +15,12 @@ def _ensure_output_dir(save_path: str) -> None:
 
 def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
     """
-    Restituisce una copia della matrice con righe normalizzate
-    (ogni riga somma a 1, quando possibile).
-
-    :param matrix: Matrice di input.
-    :return: Matrice normalizzata per righe.
+    Normalizza ogni riga della matrice (somma = 1),
+    utile per visualizzare percentuali nella confusion matrix.
     """
     matrix = matrix.astype(float, copy=True)
     row_sums = matrix.sum(axis=1, keepdims=True)
+
     return np.divide(
         matrix,
         row_sums,
@@ -33,6 +28,10 @@ def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
         where=row_sums != 0
     )
 
+
+# ============================================================
+# CONFUSION MATRIX
+# ============================================================
 
 def plot_confusion_matrix(
     cm: np.ndarray,
@@ -43,9 +42,12 @@ def plot_confusion_matrix(
 ) -> None:
     """
     Visualizza e salva la matrice di confusione come immagine.
-
     Le righe rappresentano le classi reali, mentre le colonne
     rappresentano le classi predette.
+
+    Per il dataset Breast Cancer:
+    - classe 4 = Maligno (positivo)
+    - classe 2 = Benigno (negativo)
 
     :param cm: Matrice di confusione (tipicamente 2x2).
     :param labels: Etichette delle classi da mostrare sugli assi.
@@ -53,49 +55,47 @@ def plot_confusion_matrix(
     :param save_path: Percorso del file di output.
     :param normalize: Se True, normalizza le righe della matrice.
     :return: None.
+
     """
-    # Assicura l'esistenza della directory di output
+
     _ensure_output_dir(save_path)
 
-    # Controllo di coerenza tra dimensione della matrice e numero di etichette
-    n_labels = len(labels)
-    if cm.shape[0] != n_labels or cm.shape[1] != n_labels:
+    cm = np.asarray(cm)
+
+    if cm.ndim != 2 or cm.shape[0] != cm.shape[1]:
+        raise ValueError("La confusion matrix deve essere quadrata (es. 2x2).")
+
+    if len(labels) != cm.shape[0]:
         raise ValueError(
-            f"`cm` shape {cm.shape} must match number of labels ({n_labels})."
+            f"Numero di etichette ({len(labels)}) non coerente con cm {cm.shape}."
         )
 
-    # Se richiesto, normalizza le righe della matrice
-    cm_to_plot = _normalize_rows(cm) if normalize else cm.astype(float, copy=False)
+    cm_plot = _normalize_rows(cm) if normalize else cm.astype(float)
 
-    # Creazione della figura e visualizzazione della matrice
     fig, ax = plt.subplots()
-    im = ax.imshow(cm_to_plot, cmap="Blues")
+    im = ax.imshow(cm_plot, cmap="Blues")
 
-    # Impostazione titolo, assi ed etichette
     ax.set_title(title)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.set_xticks(range(n_labels))
-    ax.set_yticks(range(n_labels))
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
 
-    # Inserimento dei valori numerici all'interno delle celle
-    for i in range(cm_to_plot.shape[0]):
-        for j in range(cm_to_plot.shape[1]):
-            value = f"{cm_to_plot[i, j]:.2f}" if normalize else f"{int(cm[i, j])}"
+    # Valori nelle celle
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            value = (
+                f"{cm_plot[i, j]:.2f}" if normalize else f"{int(cm[i, j])}"
+            )
             ax.text(j, i, value, ha="center", va="center")
 
-    # Aggiunge la colorbar per migliorare la leggibilità
     fig.colorbar(im, ax=ax)
-
-    # Ottimizza il layout e salva l'immagine
     fig.tight_layout()
     fig.savefig(save_path, dpi=200)
-
-    # Chiude la figura per liberare memoria
     plt.close(fig)
-
 
 def plot_roc_curve(
     fpr: np.ndarray,
@@ -114,16 +114,13 @@ def plot_roc_curve(
     :param save_path: Percorso del file di output.
     :return: None.
     """
-    # Assicura l'esistenza della directory di output
+
     _ensure_output_dir(save_path)
 
     fig, ax = plt.subplots()
 
-    # Curva ROC
     ax.plot(fpr, tpr, label=f"AUC = {auc_value:.3f}")
-
-    # Linea di riferimento per classificatore casuale
-    ax.plot([0, 1], [0, 1], linestyle="--", label="Random")
+    ax.plot([0, 1], [0, 1], linestyle="--", label="Random classifier")
 
     ax.set_title(title)
     ax.set_xlabel("False Positive Rate")
@@ -133,7 +130,6 @@ def plot_roc_curve(
     fig.tight_layout()
     fig.savefig(save_path, dpi=200)
     plt.close(fig)
-
 
 def plot_metric_distribution(
     values: List[float],
@@ -155,13 +151,12 @@ def plot_metric_distribution(
     :param bins: Numero di bin dell'istogramma.
     :return: None.
     """
-    # Assicura l'esistenza della directory di output
+
     _ensure_output_dir(save_path)
 
-    # Creazione della figura e visualizzazione della matrice
     fig, ax = plt.subplots()
 
-    ax.hist(values, bins=bins)
+    ax.hist(values, bins=bins, edgecolor="black")
     ax.set_title(title)
     ax.set_xlabel(metric_name)
     ax.set_ylabel("Frequency")
