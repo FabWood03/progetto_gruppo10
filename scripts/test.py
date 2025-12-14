@@ -4,18 +4,18 @@ import numpy as np
 # Aggiunge la directory corrente al path per permettere l'import dei moduli locali
 sys.path.append(".")
 
-from preprocessing.loader import DataLoader
-from knn.classifier import KNNClassifier
-from validation.holdout import HoldoutValidation
+from src.preprocessing.loader import DataLoader
+from src.knn.classifier import KNNClassifier
+from src.validation.holdout import HoldoutValidation
 
 
-def execute_holdout_validation(X: np.ndarray, y: np.ndarray) -> None:
+def execute_holdout_validation(x: np.ndarray, y: np.ndarray) -> None:
     """
     Esegue la pipeline di validazione Holdout sul dataset.
 
     Istanzia il classificatore KNN e il validatore Holdout, esegue il training
     e il testing su uno split 80/20, stampando l'accuratezza finale.
-    :param X: Matrice delle feature.
+    :param x: Matrice delle feature.
     :param y: Vettore delle etichette target.
     """
     print("\n=== VALIDAZIONE HOLDOUT ===")
@@ -32,7 +32,7 @@ def execute_holdout_validation(X: np.ndarray, y: np.ndarray) -> None:
     print(f"Configurazione: KNN(k={k_neighbors}, dist='{metric}') | Split Test: {split_ratio:.0%}")
 
     try:
-        accuracy = validator.validate(knn_model, X, y)
+        accuracy = validator.validate(knn_model, x, y)
         print(f"Risultato (Accuratezza): {accuracy:.4f}")
     except Exception as e:
         print(f"Errore durante la validazione: {e}")
