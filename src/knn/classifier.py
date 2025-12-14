@@ -132,7 +132,7 @@ class KNNClassifier:
         # Restituisce il risultato del voto
         return self._vote(neighbor_labels)
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, x: np.ndarray) -> np.ndarray:
         """
         Predice le classi per uno o più campioni X.
 
@@ -142,16 +142,50 @@ class KNNClassifier:
         if self.X_train is None or self.y_train is None:
             raise RuntimeError("KNNClassifier non addestrato. Chiama fit(X, y) prima di predict().")
 
-        X = np.asarray(X)
+        x = np.asarray(x)
 
         # Caso: un singolo campione (vettore 1D)
-        if X.ndim == 1:
-            return np.array([self.predict_one(X)], dtype=int)
+        if x.ndim == 1:
+            return np.array([self.predict_one(x)], dtype=int)
 
         # Caso: più campioni (matrice 2D)
-        if X.ndim != 2:
-            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {X.shape}")
+        if x.ndim != 2:
+            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {x.shape}")
 
-        predictions = [self.predict_one(sample) for sample in X]
+        predictions = [self.predict_one(sample) for sample in x]
 
         return np.array(predictions, dtype=int)
+
+    def predict_proba_one(self, x: np.ndarray) -> np.ndarray:
+        """
+        Ritorna le probabilità di appartenenza alle classi per un singolo campione.
+        """
+        distances = self._compute_distances(x)
+        neighbor_idxs = np.argsort(distances)[:self.k]
+        neighbor_labels = self.y_train[neighbor_idxs]
+
+        classes = np.unique(self.y_train)
+        proba = np.zeros(len(classes))
+
+        for i, c in enumerate(classes):
+            proba[i] = np.sum(neighbor_labels == c) / self.k
+
+        return proba
+
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        """
+        Ritorna le probabilità di appartenenza alle classi per ogni campione in X.
+        Shape: (n_samples, n_classes)
+        """
+        if self.X_train is None or self.y_train is None:
+            raise RuntimeError("Chiama fit(X, y) prima di predict_proba().")
+
+        x = np.asarray(x)
+
+        if x.ndim == 1:
+            return np.array([self.predict_proba_one(x)])
+
+        if x.ndim != 2:
+            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {x.shape}")
+
+        return np.array([self.predict_proba_one(sample) for sample in x])
