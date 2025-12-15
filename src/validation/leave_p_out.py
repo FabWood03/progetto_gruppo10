@@ -1,11 +1,11 @@
 import math
 import time
-import utils
+import src.utils as utils
 from itertools import combinations
 
 import numpy as np
 
-from metrics import (
+from src.metrics import (
     confusion_counts,
     accuracy_rate,
     error_rate,
@@ -15,7 +15,7 @@ from metrics import (
     f1_score,
     geometric_mean
 )
-from validation.base import ValidationStrategy
+from src.validation.base import ValidationStrategy
 
 
 class LeavePOutValidation(ValidationStrategy):
