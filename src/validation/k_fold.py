@@ -1,7 +1,7 @@
 from collections import defaultdict
 import numpy as np
-from validation.base import ValidationStrategy
-from metrics import evaluate_metrics, confusion_counts
+from src.validation.base import ValidationStrategy
+from src.metrics import evaluate_metrics, confusion_counts
 
 
 class KFoldValidation(ValidationStrategy):
