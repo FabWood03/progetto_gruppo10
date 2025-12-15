@@ -4,6 +4,15 @@ Script di test manuale per verificare il corretto funzionamento del KNN.
 Eseguire con:
     python scripts/manual_knn_test.py
 """
+import sys
+from pathlib import Path
+
+CURRENT_SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_SCRIPT_DIR.parent
+DATA_DIR = PROJECT_ROOT / "data"
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
 from src.knn.classifier import KNNClassifier
 from src.preprocessing.loader import DataLoader
@@ -12,14 +21,24 @@ from src.preprocessing.loader import DataLoader
 def main():
     print("=== TEST MANUALE KNN ===")
 
-    # 1. Caricamento e preprocessing
-    loader = DataLoader("../data/version_1.csv")
+    # Costruiamo il path sicuro usando pathlib
+    input_file = DATA_DIR / "version_1.csv"
+    output_file = DATA_DIR / "version_1_clean.csv"
 
-    X, y, df_clean = loader.load()
+    if not input_file.exists():
+        print(f"ERRORE: Il file non esiste nel percorso: {input_file}")
+        return
 
-    OUTPUT_PATH = "../data/version_1_clean.csv"  # Definisci un nuovo percorso
-    df_clean.to_csv(OUTPUT_PATH, index=False)
-    print(f"\nCSV pulito salvato in: {OUTPUT_PATH}")
+    loader = DataLoader(str(input_file))
+
+    try:
+        X, y, df_clean = loader.load()
+    except FileNotFoundError as e:
+        print(f"Errore nel loader: {e}")
+        return
+
+    df_clean.to_csv(output_file, index=False)
+    print(f"\nCSV pulito salvato in: {output_file}")
 
     print("\n--- Dataset Info ---")
     print(f"Shape X: {X.shape}")
