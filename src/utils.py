@@ -1,4 +1,4 @@
-def _format_duration(seconds: float) -> str:
+def format_duration(seconds: float) -> str:
     """Converte i secondi in un formato leggibile (giorni, ore, minuti)."""
     if seconds < 60:
         return f"{seconds:.2f} secondi"
