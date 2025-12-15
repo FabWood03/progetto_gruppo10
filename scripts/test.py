@@ -31,7 +31,7 @@ class Config:
     LPO_P = 1  # Leave-P-Out (Consigliato: 1)
 
     # Modalità: "holdout", "kfold", "leavepout", "all"
-    VALIDATION_MODE = "leavepout"
+    VALIDATION_MODE = "all"
 
     # Paths
     DATA_DIR = BASE_DIR / "data"
@@ -168,8 +168,6 @@ def run_lpo(X: np.ndarray, y: np.ndarray):
 
 
 def main():
-    print("--- Pipeline Iniziata ---")
-
     if not Config.INPUT_FILE.exists():
         print(f"ERRORE: File non trovato: {Config.INPUT_FILE}")
         return
@@ -179,8 +177,6 @@ def main():
         X, y, df_clean = loader.load()
 
         print(f"Dataset: {X.shape[0]} samples, {X.shape[1]} features")
-        u, c = np.unique(y, return_counts=True)
-        print(f"Target Distribution: {dict(zip(u, c))}")
 
         modes = {
             "holdout": run_holdout,
@@ -197,13 +193,10 @@ def main():
             print(f"Modalità '{Config.VALIDATION_MODE}' non valida.")
 
         df_clean.to_csv(Config.OUTPUT_CLEAN_FILE, index=False)
-        print(f"\nDataset pulito salvato in: {Config.OUTPUT_CLEAN_FILE}")
 
     except Exception as e:
         print(f"Errore inatteso: {e}")
         traceback.print_exc()
-
-    print("--- Pipeline Terminata ---")
 
 
 if __name__ == "__main__":

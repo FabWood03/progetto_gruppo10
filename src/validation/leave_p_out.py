@@ -99,8 +99,8 @@ class LeavePOutValidation(ValidationStrategy):
                 avg_iter = elapsed / benchmark_steps
                 est_total = avg_iter * n_combs
 
-                print(f"\n⏱️  Tempo medio: {avg_iter * 1000:.2f} ms/iter")
-                print(f"⏳ STIMA TOTALE: {utils.format_duration(est_total)}")
+                print(f"\nTEMPO MEDIO: {avg_iter * 1000:.2f} ms/iter")
+                print(f"STIMA TOTALE: {utils.format_duration(est_total)}")
                 print("-" * 30)
 
             if i > 0 and i % 5000 == 0:
