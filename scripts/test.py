@@ -1,10 +1,11 @@
 import sys
 import traceback
-import numpy as np
 from pathlib import Path
 from time import time
 
-# --- SETUP AMBIENTE ---
+import numpy as np
+
+# --- Setup Path ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
@@ -13,48 +14,53 @@ from src.preprocessing.loader import DataLoader
 from src.knn.classifier import KNNClassifier
 from src.validation.holdout import HoldoutValidation
 from src.validation.k_fold import KFoldValidation
+from src.validation.leave_p_out import LeavePOutValidation
 from src.metrics.plotter import plot_confusion_matrix, plot_roc_curve, plot_metric_distribution
 
 
-# --- CONFIGURAZIONE GLOBALE ---
 class Config:
-    """Parametri di configurazione centralizzati."""
-    # Parametri Modello
+    """Configurazione parametri e percorsi."""
+    # Modello
     K_NEIGHBORS = 5
     METRIC = "euclidean"
     RANDOM_SEED = 42
 
-    # Parametri Validazione
-    TEST_SPLIT = 0.2  # Per Holdout
-    N_SPLITS = 5  # Per K-Fold
+    # Validazione
+    TEST_SPLIT = 0.2  # Holdout
+    N_SPLITS = 5  # K-Fold
+    LPO_P = 1  # Leave-P-Out (Consigliato: 1)
 
-    # Selettore Modalità: "holdout", "kfold", "leavepout", "all"
-    VALIDATION_MODE = "all"
+    # Modalità: "holdout", "kfold", "leavepout", "all"
+    VALIDATION_MODE = "leavepout"
 
     # Paths
     DATA_DIR = BASE_DIR / "data"
-    OUTPUT_HOLDOUT_PLOTS = BASE_DIR / "outputs" / "holdout_plots"
-    OUTPUT_KFOLD_PLOTS = BASE_DIR / "outputs" / "kfold_plots"
+    OUTPUT_DIR = BASE_DIR / "outputs"
     INPUT_FILE = DATA_DIR / "version_1.csv"
     OUTPUT_CLEAN_FILE = DATA_DIR / "version_1_clean.csv"
 
 
-# --- HELPER DI OUTPUT (STAMPA & GRAFICI) ---
+def _get_model() -> KNNClassifier:
+    """Factory per istanziare il modello con la config corrente."""
+    return KNNClassifier(
+        k=Config.K_NEIGHBORS,
+        distance=Config.METRIC,
+        random_state=Config.RANDOM_SEED
+    )
+
+
 def print_scalar_metrics(metrics: dict, duration: float):
-    """Stampa report per validazione Holdout."""
     print(f"\n{'=' * 40}")
     print(f"{'METRICA':<20} | {'VALORE':<10}")
     print(f"{'-' * 40}")
     for key, val in metrics.items():
-        clean_name = key.replace('_', ' ').capitalize()
-        print(f"{clean_name:<20} | {val:.4f}")
+        print(f"{key.replace('_', ' ').capitalize():<20} | {val:.4f}")
     print(f"{'-' * 40}")
-    print(f"{'Time':<20} | {duration:.4f} s")
+    print(f"{'Duration':<20} | {duration:.4f} s")
     print(f"{'=' * 40}\n")
 
 
 def print_aggregate_metrics(summary: dict, duration: float):
-    """Stampa report aggregato per la K-fold Cross Validation (Media +/- Std)."""
     print(f"\n{'=' * 60}")
     print(f"{'METRICA (CV)':<20} | {'MEDIA':<10} | {'STD DEV':<10}")
     print(f"{'-' * 60}")
@@ -64,138 +70,132 @@ def print_aggregate_metrics(summary: dict, duration: float):
     )))
 
     for m in metric_names:
-        mean_val = summary.get(f"{m}_mean", 0.0)
-        std_val = summary.get(f"{m}_std", 0.0)
-        clean_name = m.replace('_', ' ').capitalize()
-        print(f"{clean_name:<20} | {mean_val:.4f}     | +/- {std_val:.4f}")
+        mean = summary.get(f"{m}_mean", 0.0)
+        std = summary.get(f"{m}_std", 0.0)
+        print(f"{m.replace('_', ' ').capitalize():<20} | {mean:.4f}     | +/- {std:.4f}")
 
     print(f"{'-' * 60}")
     print(f"{'Total Time':<20} | {duration:.4f} s")
     print(f"{'=' * 60}\n")
 
 
-def save_holdout_plots(results: dict, k: int):
-    """Salva i grafici per la validazione Holdout."""
-    Config.OUTPUT_HOLDOUT_PLOTS.mkdir(parents=True, exist_ok=True)
+def save_holdout_plots(results: dict):
+    out_dir = Config.OUTPUT_DIR / "holdout_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
     labels = ["Benign (0)", "Malignant (1)"]
 
     plot_confusion_matrix(
-        cm=results["confusion_matrix"], labels=labels,
-        title=f"Confusion Matrix (K={k})",
-        save_path=str(Config.OUTPUT_HOLDOUT_PLOTS / "holdout_cm_raw.png"), normalize=False
+        results["confusion_matrix"], labels, f"Confusion Matrix (K={Config.K_NEIGHBORS})",
+        str(out_dir / "holdout_cm_raw.png"), normalize=False
     )
     plot_confusion_matrix(
-        cm=results["confusion_matrix"], labels=labels,
-        title=f"Confusion Matrix Normalized (K={k})",
-        save_path=str(Config.OUTPUT_HOLDOUT_PLOTS / "holdout_cm_norm.png"), normalize=True
+        results["confusion_matrix"], labels, f"Confusion Matrix Normalized (K={Config.K_NEIGHBORS})",
+        str(out_dir / "holdout_cm_norm.png"), normalize=True
     )
     fpr, tpr = results["roc_data"]
     plot_roc_curve(
-        fpr=fpr, tpr=tpr, auc_value=results["metrics"]["auc"],
-        title=f"ROC Curve (K={k})",
-        save_path=str(Config.OUTPUT_HOLDOUT_PLOTS / "holdout_roc.png")
+        fpr, tpr, results["metrics"]["auc"], f"ROC Curve (K={Config.K_NEIGHBORS})",
+        str(out_dir / "holdout_roc.png")
     )
-    print(f"Grafici Holdout salvati in: {Config.OUTPUT_HOLDOUT_PLOTS}")
+    print(f"Grafici Holdout salvati in: {out_dir}")
 
 
-def save_kfold_plots(results: dict, k: int):
-    """Salva i grafici per la K-Fold Cross Validation."""
-    Config.OUTPUT_KFOLD_PLOTS.mkdir(parents=True, exist_ok=True)
+def save_cv_plots(results: dict, method_name: str):
+    """Gestisce salvataggio plot per K-Fold e Leave-P-Out."""
+    out_dir = Config.OUTPUT_DIR / f"{method_name}_plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
     labels = ["Benign (0)", "Malignant (1)"]
 
-    # 1. Matrice Aggregata (Somma di tutti i fold)
     plot_confusion_matrix(
-        cm=results["aggregated_cm"], labels=labels,
-        title=f"Aggregated Confusion Matrix (CV K={k})",
-        save_path=str(Config.OUTPUT_KFOLD_PLOTS / "kfold_aggregated_cm.png"),
-        normalize=True
+        results["aggregated_cm"], labels, f"Aggregated CM ({method_name})",
+        str(out_dir / "aggregated_cm.png"), normalize=True
     )
 
-    # 2. Distribuzione Accuracy
-    if "accuracy" in results["raw_metrics"]:
+    if "accuracy" in results.get("raw_metrics", {}):
         plot_metric_distribution(
-            values=results["raw_metrics"]["accuracy"],
-            metric_name="Accuracy",
-            title=f"Accuracy Distribution ({Config.N_SPLITS} Folds)",
-            save_path=str(Config.OUTPUT_KFOLD_PLOTS / "kfold_accuracy_dist.png"),
-            bins=Config.N_SPLITS
+            results["raw_metrics"]["accuracy"], "Accuracy", f"Accuracy Distribution ({method_name})",
+            str(out_dir / "accuracy_dist.png")
         )
-    print(f"Grafici K-Fold salvati in: {Config.OUTPUT_KFOLD_PLOTS}")
+    print(f"Grafici {method_name} salvati in: {out_dir}")
 
 
-# --- PIPELINE DI VALIDAZIONE ---
-def run_holdout_pipeline(X: np.ndarray, y: np.ndarray):
-    """Pipeline: Holdout Split 80/20."""
+def run_holdout(X: np.ndarray, y: np.ndarray):
     print(f"\n=== AVVIO HOLDOUT (Split {Config.TEST_SPLIT:.0%}) ===")
-
-    model = KNNClassifier(k=Config.K_NEIGHBORS, distance=Config.METRIC, random_state=Config.RANDOM_SEED)
     validator = HoldoutValidation(test_size=Config.TEST_SPLIT, random_state=Config.RANDOM_SEED)
 
     try:
         start = time()
-        results = validator.validate(model, X, y)
+        results = validator.validate(_get_model(), X, y)
         duration = time() - start
 
         print_scalar_metrics(results["metrics"], duration)
-        save_holdout_plots(results, Config.K_NEIGHBORS)
-
+        save_holdout_plots(results)
     except Exception:
         print("Errore Holdout:")
         traceback.print_exc()
 
 
-def run_kfold_pipeline(X: np.ndarray, y: np.ndarray):
-    """Pipeline: K-Fold Cross Validation."""
+def run_kfold(X: np.ndarray, y: np.ndarray):
     print(f"\n=== AVVIO K-FOLD ({Config.N_SPLITS} splits) ===")
-
-    model = KNNClassifier(k=Config.K_NEIGHBORS, distance=Config.METRIC, random_state=Config.RANDOM_SEED)
     validator = KFoldValidation(n_splits=Config.N_SPLITS, random_state=Config.RANDOM_SEED)
 
     try:
         start = time()
-        results = validator.validate(model, X, y)
+        results = validator.validate(_get_model(), X, y)
         duration = time() - start
 
         print_aggregate_metrics(results["summary"], duration)
-        save_kfold_plots(results, Config.K_NEIGHBORS)
-
+        save_cv_plots(results, "kfold")
     except Exception:
         print("Errore K-Fold:")
         traceback.print_exc()
 
 
-# --- MAIN ---
+def run_lpo(X: np.ndarray, y: np.ndarray):
+    print(f"\n=== AVVIO LEAVE-P-OUT (p={Config.LPO_P}) ===")
+    validator = LeavePOutValidation(p=Config.LPO_P)
+
+    try:
+        start = time()
+        results = validator.validate(_get_model(), X, y)
+        duration = time() - start
+
+        print_aggregate_metrics(results["summary"], duration)
+        save_cv_plots(results, "leavepout")
+    except Exception:
+        print("Errore Leave-P-Out:")
+        traceback.print_exc()
+
+
 def main():
     print("--- Pipeline Iniziata ---")
 
     if not Config.INPUT_FILE.exists():
-        print(f"File non trovato: {Config.INPUT_FILE}")
+        print(f"ERRORE: File non trovato: {Config.INPUT_FILE}")
         return
 
     try:
-        # 1. Caricamento
-        loader = DataLoader(path=str(Config.INPUT_FILE))
-
+        loader = DataLoader(str(Config.INPUT_FILE))
         X, y, df_clean = loader.load()
 
         print(f"Dataset: {X.shape[0]} samples, {X.shape[1]} features")
-        unique, counts = np.unique(y, return_counts=True)
-        print(f"Target: {dict(zip(unique, counts))}")
+        u, c = np.unique(y, return_counts=True)
+        print(f"Target Distribution: {dict(zip(u, c))}")
 
-        # 2. Esecuzione
-        if Config.VALIDATION_MODE == "kfold":
-            run_kfold_pipeline(X, y)
-        elif Config.VALIDATION_MODE == "holdout":
-            run_holdout_pipeline(X, y)
-        elif Config.VALIDATION_MODE == "leavepout":
-            print("Leave-P-Out non implementato.")
-        elif Config.VALIDATION_MODE == "all":
-            run_holdout_pipeline(X, y)
-            run_kfold_pipeline(X, y)
+        modes = {
+            "holdout": run_holdout,
+            "kfold": run_kfold,
+            "leavepout": run_lpo
+        }
+
+        if Config.VALIDATION_MODE == "all":
+            for mode in modes.values():
+                mode(X, y)
+        elif Config.VALIDATION_MODE in modes:
+            modes[Config.VALIDATION_MODE](X, y)
         else:
-            print(f"Modalità '{Config.VALIDATION_MODE}' non riconosciuta.")
+            print(f"Modalità '{Config.VALIDATION_MODE}' non valida.")
 
-        # 3. Salvataggio Dataset Pulito
         df_clean.to_csv(Config.OUTPUT_CLEAN_FILE, index=False)
         print(f"\nDataset pulito salvato in: {Config.OUTPUT_CLEAN_FILE}")
 
