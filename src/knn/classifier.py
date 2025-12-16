@@ -1,20 +1,15 @@
 import numpy as np
-
 from .distances import DistanceFactory
 
 
 class KNNClassifier:
     """
     Implementazione manuale del classificatore K-NN.
-    Costruiremo i metodi progressivamente.
     """
 
     def __init__(self, k: int = 3, distance: str = "euclidean", random_state: int | None = None):
-        """
-        Costruttore della classe KNNClassifier.
-        """
         if k <= 0:
-            raise ValueError("k deve essere maggiore di zero")
+            raise ValueError("k deve essere > 0")
 
         self.k = k
         self.random_state = random_state
@@ -22,170 +17,98 @@ class KNNClassifier:
         self.distance_metric = DistanceFactory.get_distance(distance)
         self.distance_name = distance
 
-        self.x_train = None
+        self.X_train = None
         self.y_train = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """
-        Addestra il classificatore memorizzando X e y.
-
-        Parametri:
-        - X: array numpy 2D (n_samples, n_features)
-        - y: array numpy 1D (n_samples,)
+        Addestra il modello memorizzando il training set.
+        :param X: caratteristiche del training set
+        :param y: etichette del training set
+        :return: None
         """
-
-        # Conversione in array numpy (sicurezza)
         X = np.asarray(X)
         y = np.asarray(y)
 
-        # Validazioni robuste
-        if X.ndim != 2:
-            raise ValueError(f"X deve essere 2D, shape ricevuta: {X.shape}")
+        if X.ndim != 2: raise ValueError(f"X deve essere 2D")
+        if y.ndim != 1: raise ValueError(f"y deve essere 1D")
+        if X.shape[0] != y.shape[0]: raise ValueError("X e y diverse lunghezze")
+        if self.k > X.shape[0]: raise ValueError("k > n_samples")
 
-        if y.ndim != 1:
-            raise ValueError(f"y deve essere 1D, shape ricevuta: {y.shape}")
-
-        if X.shape[0] != y.shape[0]:
-            raise ValueError(
-                f"Numero di campioni diverso tra X ({X.shape[0]}) e y ({y.shape[0]})"
-            )
-
-        if self.k > X.shape[0]:
-            raise ValueError(
-                f"k={self.k} non può essere maggiore del numero di campioni ({X.shape[0]})"
-            )
-
-        # Salvataggio dei dati
         self.X_train = X
         self.y_train = y
 
     def _compute_distances(self, x: np.ndarray) -> np.ndarray:
         """
-        Calcola le distanze tra il campione x e tutti i campioni del training set.
-        Ritorna un array numpy monodimensionale di distanze.
+        Calcola le distanze tra un campione e tutti i campioni di training.
+         1 vs N calcolo vettorializzato.
+        :param x: campione di input
+        :return: array di distanze
         """
-        if self.X_train is None or self.y_train is None:
-            raise RuntimeError("KNNClassifier non addestrato. Chiama fit(X, y) prima di predict().")
-
-        x = np.asarray(x)
-
-        # x deve essere un vettore 1D
-        if x.ndim != 1:
-            raise ValueError(f"x deve essere un vettore 1D, shape ricevuta: {x.shape}")
-
-        # stessa dimensione delle feature
-        if x.shape[0] != self.X_train.shape[1]:
-            raise ValueError(
-                f"Dimensione di x ({x.shape[0]}) diversa da n_features del training ({self.X_train.shape[1]})"
-            )
-
-        distances = []
-        for row in self.X_train:
-            d = self.distance_metric.calculate(x, row)
-            distances.append(d)
-
-        return np.array(distances, dtype=float)
+        if self.X_train is None: raise RuntimeError("KNN non addestrato")
+        # Calcolo vettorializzato (1 vs N)
+        return self.distance_metric.calculate(x, self.X_train)
 
     def _vote(self, neighbor_labels: np.ndarray) -> int:
         """
-        Determina la classe finale tramite voto di maggioranza.
-
-        Se c'è un pareggio tra due o più classi,
-        viene scelta casualmente una delle classi con maggior frequenza.
+        Esegue il voto tra le etichette dei vicini.
+        In caso di pareggio, sceglie casualmente tra le etichette con il
+        conteggio massimo.
+        :param neighbor_labels: etichetta dei k vicini
+        :return: etichetta predetta
         """
-        neighbor_labels = np.asarray(neighbor_labels)
-
-        # Trova etichette uniche e conteggi
         unique_labels, counts = np.unique(neighbor_labels, return_counts=True)
-
         max_count = counts.max()
-
-        # Classi che hanno ottenuto il massimo numero di voti
         best_labels = unique_labels[counts == max_count]
 
-        # Se c'è una sola classe vincente → la ritorniamo
         if best_labels.size == 1:
             return int(best_labels[0])
 
-        # Altrimenti scegliamo casualmente una delle etichette con max voto
         idx = self.rng.integers(low=0, high=best_labels.size)
         return int(best_labels[idx])
 
-    def predict_one(self, x: np.ndarray) -> int:
-        """
-        Predice la classe per un singolo campione x.
-
-        Passi:
-        - calcolo delle distanze tra x e tutto il training
-        - selezione dei k vicini più vicini
-        - voto di maggioranza con gestione pareggi
-        """
-        # Calcola distanze verso tutti i campioni del training
-        distances = self._compute_distances(x)
-
-        # Seleziona gli indici dei k campioni più vicini
+    # --- METODI PER VALIDAZIONE ---
+    def predict_with_distances(self, distances: np.ndarray) -> int:
+        """Predice la classe usando distanze precalcolate."""
+        if self.y_train is None: raise RuntimeError("KNN non addestrato")
         neighbor_idxs = np.argsort(distances)[:self.k]
+        return self._vote(self.y_train[neighbor_idxs])
 
-        # Estrae le loro etichette
-        neighbor_labels = self.y_train[neighbor_idxs]
-
-        # Restituisce il risultato del voto
-        return self._vote(neighbor_labels)
-
-    def predict(self, x: np.ndarray) -> np.ndarray:
+    def predict_proba_with_distances(self, distances: np.ndarray) -> np.ndarray:
         """
-        Predice le classi per uno o più campioni X.
-
-        - Se X è un vettore 1D → predice un singolo campione.
-        - Se X è 2D → predice tutti i campioni riga per riga.
+        Predice le probabilità usando distanze precalcolate.
         """
-        if self.X_train is None or self.y_train is None:
-            raise RuntimeError("KNNClassifier non addestrato. Chiama fit(X, y) prima di predict().")
+        if self.y_train is None: raise RuntimeError("KNN non addestrato")
 
-        x = np.asarray(x)
-
-        # Caso: un singolo campione (vettore 1D)
-        if x.ndim == 1:
-            return np.array([self.predict_one(x)], dtype=int)
-
-        # Caso: più campioni (matrice 2D)
-        if x.ndim != 2:
-            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {x.shape}")
-
-        predictions = [self.predict_one(sample) for sample in x]
-
-        return np.array(predictions, dtype=int)
-
-    def predict_proba_one(self, x: np.ndarray) -> np.ndarray:
-        """
-        Ritorna le probabilità di appartenenza alle classi per un singolo campione.
-        """
-        distances = self._compute_distances(x)
+        # 1. Trova i k vicini
         neighbor_idxs = np.argsort(distances)[:self.k]
         neighbor_labels = self.y_train[neighbor_idxs]
 
+        # 2. Calcola probabilità
         classes = np.unique(self.y_train)
-        proba = np.zeros(len(classes))
 
+        proba = np.zeros(len(classes))
         for i, c in enumerate(classes):
             proba[i] = np.sum(neighbor_labels == c) / self.k
 
         return proba
 
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        """
-        Ritorna le probabilità di appartenenza alle classi per ogni campione in X.
-        Shape: (n_samples, n_classes)
-        """
-        if self.X_train is None or self.y_train is None:
-            raise RuntimeError("Chiama fit(X, y) prima di predict_proba().")
+    def predict_one(self, x: np.ndarray) -> int:
+        dists = self._compute_distances(x)
+        return self.predict_with_distances(dists)
 
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        if self.X_train is None: raise RuntimeError("KNN non addestrato")
         x = np.asarray(x)
+        if x.ndim == 1: return np.array([self.predict_one(x)])
+        return np.array([self.predict_one(s) for s in x])
 
-        if x.ndim == 1:
-            return np.array([self.predict_proba_one(x)])
+    def predict_proba_one(self, x: np.ndarray) -> np.ndarray:
+        dists = self._compute_distances(x)
+        return self.predict_proba_with_distances(dists)
 
-        if x.ndim != 2:
-            raise ValueError(f"X deve essere 1D o 2D. Shape ricevuta: {x.shape}")
-
-        return np.array([self.predict_proba_one(sample) for sample in x])
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        if self.X_train is None: raise RuntimeError("KNN non addestrato")
+        x = np.asarray(x)
+        if x.ndim == 1: return np.array([self.predict_proba_one(x)])
+        return np.array([self.predict_proba_one(s) for s in x])

@@ -10,54 +10,55 @@ class DistanceStrategy(ABC):
     """
 
     @abstractmethod
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
+    def calculate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         pass
 
 
 class EuclideanDistance(DistanceStrategy):
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
+    def calculate(self, x: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """
         Distanza euclidea (L2).
         È la distanza standard richiesta.
         """
-        diff = x - y
-        return float(np.sqrt(np.sum(diff * diff)))
+        return np.sqrt(np.sum((matrix - x) ** 2, axis=1))
 
 
 class ManhattanDistance(DistanceStrategy):
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
+    def calculate(self, x: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """
         Distanza di Manhattan (L1).
         Molto adatta ai dati ordinali 1–10 del dataset.
         """
-        return float(np.sum(np.abs(x - y)))
+        return np.sum(np.abs(matrix - x), axis=1)
 
 
 class ChebyshevDistance(DistanceStrategy):
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
+    def calculate(self, x: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """
         Distanza di Chebyshev (L∞).
         Misura la massima differenza tra le feature.
         Utile in contesti dove conta la 'peggior' caratteristica.
         """
-        return float(np.max(np.abs(x - y)))
+        return np.max(np.abs(matrix - x), axis=1)
 
 
 class CosineDistance(DistanceStrategy):
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
+    def calculate(self, x: np.ndarray, matrix: np.ndarray) -> np.ndarray:
         """
         Distanza basata su 1 - coseno.
         Confronta la 'forma' del profilo delle feature.
         Richiede che le feature siano normalizzate (come abbiamo fatto).
         """
         x_norm = np.linalg.norm(x)
-        y_norm = np.linalg.norm(y)
+        matrix_norm = np.linalg.norm(matrix, axis=1)
 
-        if x_norm == 0.0 or y_norm == 0.0:
-            return 1.0
+        denom = (x_norm * matrix_norm)
 
-        cos_sim = float(np.dot(x, y) / (x_norm * y_norm))
-        return 1.0 - cos_sim
+        # Evita divisione per zero
+        denom[denom == 0] = 1e-10
+
+        dot_product = np.dot(matrix, x)
+        return 1.0 - (dot_product / denom)
 
 
 class DistanceFactory:
@@ -75,11 +76,6 @@ class DistanceFactory:
         Solleva ValueError se il nome non è valido.
         """
         name = name.lower().strip()
-
         if name not in DistanceFactory.DISTANCE_FUNCTIONS:
-            valid_keys = list(DistanceFactory.DISTANCE_FUNCTIONS.keys())
-            raise ValueError(f"Metrica '{name}' non supportata. Disponibili: {valid_keys}")
-
-        # Istanzia la classe corrispondente e la ritorna
-        metric_class = DistanceFactory.DISTANCE_FUNCTIONS[name]
-        return metric_class()
+            raise ValueError(f"Metrica '{name}' non supportata.")
+        return DistanceFactory.DISTANCE_FUNCTIONS[name]()

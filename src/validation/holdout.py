@@ -11,10 +11,14 @@ from .base import ValidationStrategy
 
 class HoldoutValidation(ValidationStrategy):
     """
-    Implementazione della strategia Holdout.
-    Divide il dataset in un set di addestramento e uno di test,
-    addestra il modello sul set di addestramento e valuta
-    le prestazioni sul set di test.
+    Implementazione della strategia Holdout ottimizzata.
+    Divide il dataset in un training set e un test set basato su una
+    proporzione specificata. Addestra il modello sul training set e
+    valuta le prestazioni sul test set.
+    1. Addestra il modello memorizzando i dati di training.
+    2. Durante l'inference, calcola le distanze in modo vettorializzato
+         per tutti i campioni di test in un singolo passaggio.
+    3. Calcola e restituisce le metriche di valutazione.
     """
 
     def __init__(self, test_size: float = 0.2, random_state: int | None = None):
@@ -26,39 +30,54 @@ class HoldoutValidation(ValidationStrategy):
 
     def validate(self, model, X: np.ndarray, y: np.ndarray) -> dict:
         """
-        Esegue la validazione Holdout e restituisce i risultati grezzi.
-        :return: Un dizionario contenente metriche, dati ROC e matrice di confusione.
+        Esegue la validazione Holdout ottimizzata.
+        :param model: modello KNN da validare
+        :param X: caratteristiche del dataset
+        :param y: etichette del dataset
+        :return: dizionario con metriche e dati di valutazione
         """
-        # --- 1. PREPARAZIONE DATI ---
+        # 1. PREPARAZIONE DATI
         X = np.asarray(X)
         y = np.asarray(y)
 
-        if X.shape[0] != y.shape[0]:
-            raise ValueError(f"X e y hanno dimensioni diverse: {X.shape[0]} vs {y.shape[0]}")
-
-        # Split Train/Test
         n_samples = X.shape[0]
         n_test = int(n_samples * self.test_size)
         indices = self.rng.permutation(n_samples)
 
         train_idx, test_idx = indices[n_test:], indices[:n_test]
-        X_train, y_train = X[train_idx], y[train_idx]
-        X_test, y_test = X[test_idx], y[test_idx]
 
-        # --- 2. TRAINING & INFERENCE ---
-        model.fit(X_train, y_train)
+        # 2. TRAINING & INFERENCE
+        # Il fit memorizza il training set
+        model.fit(X[train_idx], y[train_idx])
 
-        y_pred = model.predict(X_test)
+        X_test = X[test_idx]
+        y_test = y[test_idx]
 
-        y_probs = model.predict_proba(X_test)
-        y_score = y_probs[:, 1]
+        # Calcoliamo le distanze
+        # Per ogni punto in X_test, calcoliamo la distanza verso tutto X_train
+        y_pred = []
+        y_score = []
 
-        # --- 3. CALCOLO METRICHE ---
-        # Calcolo curve ROC
+        # Usiamo il modello per predire in modo efficiente
+        for i in range(len(X_test)):
+            dists = model.distance_metric.calculate(X_test[i], X[train_idx])
+
+            # Predizione classe
+            y_pred.append(model.predict_with_distances(dists))
+
+            # Predizione probabilità
+            proba = model.predict_proba_with_distances(dists)
+
+            # Probabilità classe positiva (assumendo classi [0,1])
+            y_score.append(proba[1])
+
+        y_pred = np.array(y_pred)
+        y_score = np.array(y_score)
+
+        # 3. CALCOLO METRICHE
         fpr, tpr, _ = roc_curve_manual(y_test, y_score)
         auc_value = calculate_auc(fpr, tpr)
 
-        # Calcolo tutte le metriche scalari
         metrics = evaluate_metrics(
             y_true=y_test,
             y_pred=y_pred,
@@ -66,11 +85,8 @@ class HoldoutValidation(ValidationStrategy):
             metrics=["accuracy", "error", "sensitivity", "specificity",
                      "precision", "f1", "gmean"]
         )
-
         metrics["auc"] = auc_value
 
-        # Dati per la matrice di confusione
-        # Ricaviamo i conteggi raw per poterli plottare fuori
         c = confusion_counts(y_test, y_pred)
         cm_matrix = np.array([[c.tp, c.fn], [c.fp, c.tn]])
 
