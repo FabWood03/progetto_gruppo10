@@ -10,17 +10,23 @@ def load_raw_dataset(path: str):
     return df
 
 
-def clean_dataset(df: pd.DataFrame):
+def clean_dataset(df: pd.DataFrame, exclude_columns=None):
     """
     Pulisce il dataset:
-    - sostituisce valori non numerici con NaN
-    - converte tutto in float
-    - gestisce valori mancanti con la mediana
+    - sostituisce '?' con NaN
+    - converte a numerico
+    - imputa SOLO le feature (esclude il target)
     """
+    exclude_columns = exclude_columns or []
+
     df = df.replace("?", pd.NA)
-    df = df.apply(pd.to_numeric, errors='coerce')
-    df = df.fillna(df.median())
+    df = df.apply(pd.to_numeric, errors="coerce")
+
+    feature_cols = [c for c in df.columns if c not in exclude_columns]
+    df[feature_cols] = df[feature_cols].fillna(df[feature_cols].median())
+
     return df
+
 
 
 def rename_columns(df: pd.DataFrame, mapping: dict):
@@ -61,20 +67,24 @@ class DataLoader:
     Classe che esegue l'intera pipeline di preprocessing del dataset.
     Tutti i parametri sono configurabili in modo da rendere il codice robusto.
     """
-
+    #(nuovo)
     def __init__(
-            self,
-            path: str,
-            target_column: str = "classtype_v1",
-            positive_label: float = 4.0,
-            negative_label: float = 2.0,
-            columns_to_rename: dict = None,
-            columns_to_remove: list = None
-    ):
+        self,
+        path: str,
+        target_column: str = "classtype_v1",
+        positive_label: float = 4.0,
+        negative_label: float = 2.0,
+        columns_to_rename: dict = None,
+        columns_to_remove: list = None,
+        normalize: bool = True
+):
+
         self.path = path
         self.target_column = target_column
         self.positive_label = positive_label
         self.negative_label = negative_label
+        self.normalize = normalize 
+
 
         self.columns_to_rename = columns_to_rename or {
             "uniformity_cellsize_xx": "Uniformity of Cell Size",
@@ -83,15 +93,18 @@ class DataLoader:
         }
 
         self.columns_to_remove = columns_to_remove or [
-            "Sample code number"
+            "Sample code number",
+            "Blood Pressure",
+            "Heart Rate"
         ]
+
 
     def load(self):
         # 1. Caricamento dataset
         df = load_raw_dataset(self.path)
 
-        # 2. Cleaning
-        df = clean_dataset(df)
+        # 2. Elimina righe con target mancante
+        df = df.dropna(subset=[self.target_column])
 
         # 3. Rinominare colonne
         df = rename_columns(df, self.columns_to_rename)
@@ -99,20 +112,25 @@ class DataLoader:
         # 4. Rimozione colonne inutili
         df = remove_unwanted_columns(df, self.columns_to_remove)
 
-        # 5. Conversione del target (prima della normalizzazione)
+        # 5. Cleaning SOLO delle feature (target escluso)
+        df = clean_dataset(df, exclude_columns=[self.target_column])
+
+        #(nuovo)
+        raw_target = df[self.target_column].copy()
+
         df[self.target_column] = df[self.target_column].map({
             self.negative_label: 0,
             self.positive_label: 1
         })
 
-
-        # Controllo errori nei valori target
         if df[self.target_column].isna().any():
-            valori_originali = set(df[self.target_column])
-            raise ValueError(f"Valori target non validi trovati: {valori_originali}")
+            bad_values = set(raw_target[df[self.target_column].isna()].unique())
+            raise ValueError(f"Valori target non mappabili trovati: {bad_values}")
 
-        # 6. Normalizzazione SOLO delle feature (non del target)
-        df = normalize_features(df, exclude_columns=[self.target_column])
+
+        # 6. Normalizzazione SOLO se richiesta (evita leakage)
+        if self.normalize:
+            df = normalize_features(df, exclude_columns=[self.target_column])
 
         # 7. Split X/y
         X = df.drop(columns=[self.target_column]).values
