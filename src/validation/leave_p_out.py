@@ -71,13 +71,13 @@ class LeavePOutValidation(ValidationStrategy):
         start_time = time.time()
         benchmark_steps = 200
 
-        # 2. LOO
+        # 2. LOOP
         for i, test_idx_tuple in enumerate(combinations(all_indices, self.p)):
             test_indices = list(test_idx_tuple)
 
             # A. Setup Maschera Train
-            mask[:] = True
-            mask[test_indices] = False
+            mask[:] = True # Reset
+            mask[test_indices] = False # Test indices a False
 
             # B. "Addestramento" Leggero
             # Invece di passare X (pesante), passiamo solo y al modello
