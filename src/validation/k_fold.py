@@ -3,6 +3,8 @@ import numpy as np
 
 from src.metrics import evaluate_metrics, confusion_counts
 from src.validation.base import ValidationStrategy
+from src.validation.base import minmax_scale_train_test
+
 
 
 class KFoldValidation(ValidationStrategy):
@@ -26,10 +28,16 @@ class KFoldValidation(ValidationStrategy):
     def validate(self, model, X, y):
         """
         Esegue la validazione K-Fold ottimizzata.
-        :param model: modello KNN da validare
-        :param X: caratteristiche del dataset
-        :param y: etichette del dataset
-        :return: dizionario con metriche aggregate e dettagliate
+
+        Per ogni fold, il dataset viene suddiviso in training e test set.
+        La normalizzazione delle feature è applicata separatamente
+        per ciascun fold, utilizzando esclusivamente i dati di training,
+        al fine di evitare il data leakage.
+
+        :param model: Modello KNN da validare.
+        :param X: Matrice delle feature.
+        :param y: Vettore delle etichette.
+        :return: Dizionario con metriche aggregate e dettagliate.
         """
         X = np.asarray(X)
         y = np.asarray(y)
@@ -54,6 +62,9 @@ class KFoldValidation(ValidationStrategy):
 
             X_train, y_train = X[train_idx], y[train_idx]
             X_test, y_test = X[test_idx], y[test_idx]
+            
+            # Normalizzazione corretta (solo sul training del fold)
+            X_train, X_test = minmax_scale_train_test(X_train, X_test)
 
             # 2. Addestramento (Memorizzazione)
             model.fit(X_train, y_train)
