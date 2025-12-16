@@ -1,7 +1,6 @@
 import numpy as np
 from src.validation.base import minmax_scale_train_test
 
-
 from src.metrics.evaluator import (
     confusion_counts,
     roc_curve_manual,
@@ -50,10 +49,9 @@ class HoldoutValidation(ValidationStrategy):
         n_samples = X.shape[0]
         n_test = int(n_samples * self.test_size)
         indices = self.rng.permutation(n_samples)
-
         train_idx, test_idx = indices[n_test:], indices[:n_test]
 
-       # 2. TRAINING & INFERENCE
+        # 2. TRAINING & INFERENCE
 
         # Estrazione training e test set
         X_train = X[train_idx]
@@ -68,29 +66,19 @@ class HoldoutValidation(ValidationStrategy):
         # Il fit memorizza il training set normalizzato
         model.fit(X_train, y_train)
 
-        # Calcoliamo le distanze
-        # Per ogni punto in X_test, calcoliamo la distanza verso tutto X_train
-        y_pred = []
-        y_score = []
+        # 3. INFERENCE
+        y_pred = model.predict(X_test)
 
-        # Usiamo il modello per predire in modo efficiente
-        for i in range(len(X_test)):
-            dists = model.distance_metric.calculate(X_test[i], X_train)
+        # Otteniamo le probabilità per l'AUC
+        probas = model.predict_proba(X_test)
 
+        # Estraiamo lo score per la classe positiva (1).
+        if probas.ndim > 1 and probas.shape[1] > 1:
+            y_score = probas[:, 1]
+        else:
+            y_score = probas.flatten()
 
-            # Predizione classe
-            y_pred.append(model.predict_with_distances(dists))
-
-            # Predizione probabilità
-            proba = model.predict_proba_with_distances(dists)
-
-            # Probabilità classe positiva (assumendo classi [0,1])
-            y_score.append(proba[1])
-
-        y_pred = np.array(y_pred)
-        y_score = np.array(y_score)
-
-        # 3. CALCOLO METRICHE
+        # 4. CALCOLO METRICHE DI VALUTAZIONE
         fpr, tpr, _ = roc_curve_manual(y_test, y_score)
         auc_value = calculate_auc(fpr, tpr)
 
