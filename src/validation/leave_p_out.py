@@ -26,11 +26,18 @@ class LeavePOutValidation(ValidationStrategy):
 
     def validate(self, model, X, y):
         """
-        Esegue la validazione Leave-P-Out.
-        :param model: modello KNN da validare
-        :param X: caratteristiche del dataset
-        :param y: etichette del dataset
-        :return: dizionario con metriche aggregate e dettagliate
+        Esegue la validazione Leave-P-Out (LPO).
+
+        Le distanze tra tutti i campioni vengono pre-calcolate una sola volta
+        su tutto il dataset per ridurre drasticamente la complessità computazionale.
+        Per questo motivo, non viene applicata una normalizzazione per ogni split,
+        mantenendo coerenza con la matrice globale delle distanze ed evitando
+        un costo computazionale proibitivo.
+
+        :param model: Modello KNN da validare.
+        :param X: Matrice delle feature.
+        :param y: Vettore delle etichette.
+        :return: Dizionario con metriche aggregate e dettagliate.
         """
         X = np.asarray(X)
         y = np.asarray(y)
