@@ -1,4 +1,6 @@
 import numpy as np
+from src.validation.base import minmax_scale_train_test
+
 
 from src.metrics.evaluator import (
     confusion_counts,
@@ -30,12 +32,17 @@ class HoldoutValidation(ValidationStrategy):
 
     def validate(self, model, X: np.ndarray, y: np.ndarray) -> dict:
         """
-        Esegue la validazione Holdout ottimizzata.
-        :param model: modello KNN da validare
-        :param X: caratteristiche del dataset
-        :param y: etichette del dataset
-        :return: dizionario con metriche e dati di valutazione
-        """
+            Esegue la validazione Holdout.
+
+            Il dataset viene suddiviso in training e test set.
+            La normalizzazione delle feature è applicata esclusivamente
+            sui dati di training per evitare il data leakage.
+
+            :param model: Modello KNN da validare.
+            :param X: Matrice delle feature.
+            :param y: Vettore delle etichette.
+            :return: Dizionario con metriche e dati di valutazione.
+         """
         # 1. PREPARAZIONE DATI
         X = np.asarray(X)
         y = np.asarray(y)
@@ -46,12 +53,20 @@ class HoldoutValidation(ValidationStrategy):
 
         train_idx, test_idx = indices[n_test:], indices[:n_test]
 
-        # 2. TRAINING & INFERENCE
-        # Il fit memorizza il training set
-        model.fit(X[train_idx], y[train_idx])
+       # 2. TRAINING & INFERENCE
+
+        # Estrazione training e test set
+        X_train = X[train_idx]
+        y_train = y[train_idx]
 
         X_test = X[test_idx]
         y_test = y[test_idx]
+
+        # Normalizzazione corretta (solo sul training)
+        X_train, X_test = minmax_scale_train_test(X_train, X_test)
+
+        # Il fit memorizza il training set normalizzato
+        model.fit(X_train, y_train)
 
         # Calcoliamo le distanze
         # Per ogni punto in X_test, calcoliamo la distanza verso tutto X_train
@@ -60,7 +75,8 @@ class HoldoutValidation(ValidationStrategy):
 
         # Usiamo il modello per predire in modo efficiente
         for i in range(len(X_test)):
-            dists = model.distance_metric.calculate(X_test[i], X[train_idx])
+            dists = model.distance_metric.calculate(X_test[i], X_train)
+
 
             # Predizione classe
             y_pred.append(model.predict_with_distances(dists))
