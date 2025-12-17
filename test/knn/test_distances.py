@@ -189,6 +189,18 @@ class TestDistances(unittest.TestCase):
         result = strategy.calculate(x, matrix)
         self.assertEqual(result.shape[0], 0)
 
+    def test_negative_values(self):
+        """
+        Supporto a valori negativi.
+        """
+        strategy = ManhattanDistance()
+
+        x = np.array([-1.0, -2.0])
+        matrix = np.array([[1.0, 2.0]])
+
+        expected = np.array([6.0])
+        np.testing.assert_allclose(strategy.calculate(x, matrix), expected)
+
 
 if __name__ == '__main__':
     unittest.main()
