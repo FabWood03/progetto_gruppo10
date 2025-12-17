@@ -115,5 +115,20 @@ class TestDistances(unittest.TestCase):
             err_msg="Errore nel calcolo della distanza Manhattan"
         )
 
+    def test_chebyshev_distance(self):
+        """
+        Verifica matematica della distanza Chebyshev.
+        """
+        strategy = ChebyshevDistance()
+        dists = strategy.calculate(self.x, self.matrix)
+
+        expected = np.array([4.0, 0.0, 2.0])
+
+        np.testing.assert_allclose(
+            dists,
+            expected,
+            err_msg="Errore nel calcolo della distanza Chebyshev"
+        )
+
 if __name__ == '__main__':
     unittest.main()
