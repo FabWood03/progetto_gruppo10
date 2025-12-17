@@ -7,7 +7,7 @@ from typing import Sequence, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Tipo per i percorsi: accetta stringhe o oggetti Path
+# Tipo per i percorsi: accetta stringhe od oggetti Path
 PathType = Union[str, Path]
 
 

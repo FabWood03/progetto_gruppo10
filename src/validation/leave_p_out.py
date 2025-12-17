@@ -51,15 +51,11 @@ class LeavePOutValidation(ValidationStrategy):
 
         # 1. PRE-CALCOLO MATRICE
         # Calcoliamo TUTTE le distanze possibili ora, una volta sola.
-        print("Calcolo matrice distanze globale (Pre-computing)...")
-        start_mat = time.time()
-
         full_dist_matrix = np.zeros((n_samples, n_samples), dtype=np.float32)
 
         for i in range(n_samples):
             full_dist_matrix[i, :] = model.distance_metric.calculate(X[i], X)
 
-        print(f"Matrice completata in {time.time() - start_mat:.2f}s")
 
         # Setup memoria
         metrics_storage = np.zeros((n_combs, 7), dtype=np.float32)
@@ -71,13 +67,13 @@ class LeavePOutValidation(ValidationStrategy):
         start_time = time.time()
         benchmark_steps = 200
 
-        # 2. LOO
+        # 2. LOOP
         for i, test_idx_tuple in enumerate(combinations(all_indices, self.p)):
             test_indices = list(test_idx_tuple)
 
             # A. Setup Maschera Train
-            mask[:] = True
-            mask[test_indices] = False
+            mask[:] = True # Reset
+            mask[test_indices] = False # Test indices a False
 
             # B. "Addestramento" Leggero
             # Invece di passare X (pesante), passiamo solo y al modello
