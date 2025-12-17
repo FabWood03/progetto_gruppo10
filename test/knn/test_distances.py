@@ -177,6 +177,18 @@ class TestDistances(unittest.TestCase):
         with self.assertRaises(ValueError):
             strategy.calculate(x, matrix)
 
+    def test_empty_matrix(self):
+        """
+        matrix vuota: deve restituire un array vuoto.
+        """
+        strategy = EuclideanDistance()
+
+        x = np.array([1.0, 2.0])
+        matrix = np.empty((0, 2))
+
+        result = strategy.calculate(x, matrix)
+        self.assertEqual(result.shape[0], 0)
+
 
 if __name__ == '__main__':
     unittest.main()
