@@ -1,15 +1,14 @@
 import numpy as np
 from collections import defaultdict
 from src.metrics import evaluate_metrics, confusion_counts
-<<<<<<< HEAD
+
 from src.validation.base import ValidationStrategy
 from src.validation.base import minmax_scale_train_test
 from src.validation.base import median_impute_train_test
 
 
-=======
-from src.validation.base import ValidationStrategy, minmax_scale_train_test
->>>>>>> main
+#from src.validation.base import ValidationStrategy, minmax_scale_train_test
+
 
 
 class KFoldValidation(ValidationStrategy):
