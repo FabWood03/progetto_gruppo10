@@ -130,5 +130,25 @@ class TestDistances(unittest.TestCase):
             err_msg="Errore nel calcolo della distanza Chebyshev"
         )
 
+    def test_cosine_distance(self):
+        """
+        Verifica della distanza Coseno in casi noti.
+        """
+        strategy = CosineDistance()
+
+        # Vettori ortogonali -> cos = 0 -> distanza = 1
+        x_ortho = np.array([1.0, 0.0])
+        mat_ortho = np.array([[0.0, 1.0]])
+        res_ortho = strategy.calculate(x_ortho, mat_ortho)
+        self.assertAlmostEqual(res_ortho[0], 1.0)
+
+        # Vettori paralleli -> cos = 1 -> distanza = 0
+        x_para = np.array([2.0, 2.0])
+        mat_para = np.array([[1.0, 1.0]])
+        res_para = strategy.calculate(x_para, mat_para)
+        self.assertAlmostEqual(res_para[0], 0.0)
+
+
+
 if __name__ == '__main__':
     unittest.main()
