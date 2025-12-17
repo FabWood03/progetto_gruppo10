@@ -226,6 +226,15 @@ class TestDistances(unittest.TestCase):
         result = strategy.calculate(x, matrix)
         self.assertFalse(np.isnan(result[0]))
 
+    def test_output_shape(self):
+        """
+        L'output deve avere una distanza per ogni riga della matrix.
+        """
+        strategy = EuclideanDistance()
+        dists = strategy.calculate(self.x, self.matrix)
+
+        self.assertEqual(dists.shape, (self.matrix.shape[0],))
+
 
 if __name__ == '__main__':
     unittest.main()
