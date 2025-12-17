@@ -149,6 +149,23 @@ class TestDistances(unittest.TestCase):
         self.assertAlmostEqual(res_para[0], 0.0)
 
 
+    # =========================
+    # CASI LIMITE / ERRORI
+    # =========================
+
+    def test_dimension_mismatch(self):
+        """
+        Dimensioni incompatibili tra x e matrix.
+        """
+        strategy = EuclideanDistance()
+
+        x = np.array([1.0, 2.0, 3.0])
+        matrix = np.array([[1.0, 2.0]])
+
+        with self.assertRaises(ValueError):
+            strategy.calculate(x, matrix)
+
+
 
 if __name__ == '__main__':
     unittest.main()
