@@ -165,6 +165,17 @@ class TestDistances(unittest.TestCase):
         with self.assertRaises(ValueError):
             strategy.calculate(x, matrix)
 
+    def test_matrix_not_2d(self):
+        """
+        matrix deve essere bidimensionale.
+        """
+        strategy = ManhattanDistance()
+
+        x = np.array([1.0, 2.0])
+        matrix = np.array([3.0, 4.0])  # non 2D
+
+        with self.assertRaises(ValueError):
+            strategy.calculate(x, matrix)
 
 
 if __name__ == '__main__':
