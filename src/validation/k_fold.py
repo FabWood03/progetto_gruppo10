@@ -4,6 +4,8 @@ import numpy as np
 from src.metrics import evaluate_metrics, confusion_counts
 from src.validation.base import ValidationStrategy
 from src.validation.base import minmax_scale_train_test
+from src.validation.base import median_impute_train_test
+
 
 
 
@@ -62,6 +64,9 @@ class KFoldValidation(ValidationStrategy):
 
             X_train, y_train = X[train_idx], y[train_idx]
             X_test, y_test = X[test_idx], y[test_idx]
+
+            # Imputazione dei NaN (solo sul training del fold)
+            X_train, X_test = median_impute_train_test(X_train, X_test)
             
             # Normalizzazione corretta (solo sul training del fold)
             X_train, X_test = minmax_scale_train_test(X_train, X_test)
