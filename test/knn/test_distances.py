@@ -201,6 +201,18 @@ class TestDistances(unittest.TestCase):
         expected = np.array([6.0])
         np.testing.assert_allclose(strategy.calculate(x, matrix), expected)
 
+    def test_nan_values(self):
+        """
+        Presenza di NaN: il risultato deve propagare NaN.
+        """
+        strategy = ManhattanDistance()
+
+        x = np.array([1.0, np.nan])
+        matrix = np.array([[1.0, 2.0]])
+
+        result = strategy.calculate(x, matrix)
+        self.assertTrue(np.isnan(result[0]))
+
 
 if __name__ == '__main__':
     unittest.main()
