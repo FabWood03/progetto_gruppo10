@@ -76,6 +76,44 @@ class TestDistances(unittest.TestCase):
         with self.assertRaises(ValueError):
             DistanceFactory.get_distance("")
 
+        # =========================
+        # DISTANZE CORRETTE
+        # =========================
+
+    def test_euclidean_distance(self):
+        """
+        Verifica matematica della distanza Euclidea.
+        """
+        strategy = EuclideanDistance()
+        dists = strategy.calculate(self.x, self.matrix)
+
+        expected = np.array([
+            5.0,
+            0.0,
+            np.sqrt(5)
+        ])
+
+        np.testing.assert_allclose(
+            dists,
+            expected,
+            rtol=1e-5,
+            err_msg="Errore nel calcolo della distanza Euclidea"
+        )
+
+    def test_manhattan_distance(self):
+        """
+        Verifica matematica della distanza Manhattan.
+        """
+        strategy = ManhattanDistance()
+        dists = strategy.calculate(self.x, self.matrix)
+
+        expected = np.array([7.0, 0.0, 3.0])
+
+        np.testing.assert_allclose(
+            dists,
+            expected,
+            err_msg="Errore nel calcolo della distanza Manhattan"
+        )
 
 if __name__ == '__main__':
     unittest.main()
