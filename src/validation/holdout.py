@@ -1,5 +1,7 @@
 import numpy as np
 from src.validation.base import minmax_scale_train_test
+from src.validation.base import median_impute_train_test
+
 
 
 from src.metrics.evaluator import (
@@ -62,6 +64,8 @@ class HoldoutValidation(ValidationStrategy):
         X_test = X[test_idx]
         y_test = y[test_idx]
 
+        # Imputazione dei NaN (solo sul training)
+        X_train, X_test = median_impute_train_test(X_train, X_test)
         # Normalizzazione corretta (solo sul training)
         X_train, X_test = minmax_scale_train_test(X_train, X_test)
 
