@@ -213,6 +213,19 @@ class TestDistances(unittest.TestCase):
         result = strategy.calculate(x, matrix)
         self.assertTrue(np.isnan(result[0]))
 
+    def test_cosine_zero_vector(self):
+        """
+        Cosine distance con vettore nullo.
+        Non deve produrre NaN o crash.
+        """
+        strategy = CosineDistance()
+
+        x = np.array([0.0, 0.0])
+        matrix = np.array([[1.0, 1.0]])
+
+        result = strategy.calculate(x, matrix)
+        self.assertFalse(np.isnan(result[0]))
+
 
 if __name__ == '__main__':
     unittest.main()
