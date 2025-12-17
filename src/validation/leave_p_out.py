@@ -51,15 +51,11 @@ class LeavePOutValidation(ValidationStrategy):
 
         # 1. PRE-CALCOLO MATRICE
         # Calcoliamo TUTTE le distanze possibili ora, una volta sola.
-        print("Calcolo matrice distanze globale (Pre-computing)...")
-        start_mat = time.time()
-
         full_dist_matrix = np.zeros((n_samples, n_samples), dtype=np.float32)
 
         for i in range(n_samples):
             full_dist_matrix[i, :] = model.distance_metric.calculate(X[i], X)
 
-        print(f"Matrice completata in {time.time() - start_mat:.2f}s")
 
         # Setup memoria
         metrics_storage = np.zeros((n_combs, 7), dtype=np.float32)
