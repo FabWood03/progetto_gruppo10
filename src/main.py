@@ -113,14 +113,35 @@ def print_metrics(metrics: dict, duration: float, mode="scalar"):
 def save_plots(results: dict, mode: str, k: int, paths_obj):
     out_dir = paths_obj.OUTPUT_DIR / f"{mode}_plots"
     out_dir.mkdir(parents=True, exist_ok=True)
-    labels = ["Benign (0)", "Malignant (1)"]
+    labels = ["Benigno (0)", "Maligno (1)"]
+
+    # Confusion matrix
     cm_key = "confusion_matrix" if mode == "holdout" else "aggregated_cm"
     if cm_key in results:
-        plot_confusion_matrix(results[cm_key], labels, f"CM {mode.title()} (K={k})",
-                              str(out_dir / "cm_norm.png"), normalize=True)
+        plot_confusion_matrix(
+            results[cm_key],
+            labels,
+            f"CM {mode.title()} (K={k})",
+            str(out_dir / "cm_norm.png"),
+            normalize=True
+        )
+
+    # ROC solo per holdout
     if mode == "holdout" and "roc_data" in results:
         fpr, tpr = results["roc_data"]
-        plot_roc_curve(fpr, tpr, results["metrics"].get("auc", 0.0), f"ROC {mode.title()}", str(out_dir / "roc.png"))
+        plot_roc_curve(fpr, tpr, results["metrics"].get("auc", 0.0),
+                       f"ROC {mode.title()}", str(out_dir / "roc.png"))
+
+    # Distribuzione metriche per K-Fold / LPO
+    if mode in ["kfold", "leavepout"] and "raw_metrics" in results:
+        for metric_name, values in results["raw_metrics"].items():
+            plot_metric_distribution(
+                values,
+                metric_name,
+                f"{metric_name.title()} distribution ({mode.title()}, K={k})",
+                str(out_dir / f"{metric_name}_dist.png")
+            )
+
     print(f" [INFO] Grafici salvati in: {out_dir}")
 
 
