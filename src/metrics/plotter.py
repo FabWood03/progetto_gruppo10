@@ -114,7 +114,7 @@ def plot_roc_curve(
 
 
 def plot_metric_distribution(
-        values: list[float] | np.ndarray,
+        values: Sequence[float],
         metric_name: str,
         title: str,
         save_path: PathType,
@@ -128,7 +128,7 @@ def plot_metric_distribution(
     ax.hist(values, bins=bins, color='skyblue', edgecolor='black', alpha=0.7)
 
     ax.set_xlabel(metric_name)
-    ax.set_ylabel('Frequency')
+    ax.set_ylabel('Frequenza')
     ax.grid(axis='y', linestyle='--', alpha=0.5)
 
     _save_and_close(fig, save_path)

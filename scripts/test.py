@@ -82,19 +82,19 @@ def print_aggregate_metrics(summary: dict, duration: float):
 def save_holdout_plots(results: dict):
     out_dir = Config.OUTPUT_DIR / "holdout_plots"
     out_dir.mkdir(parents=True, exist_ok=True)
-    labels = ["Benign (0)", "Malignant (1)"]
+    labels = ["Benigno (0)", "Maligno (1)"]
 
     plot_confusion_matrix(
-        results["confusion_matrix"], labels, f"Confusion Matrix (K={Config.K_NEIGHBORS})",
+        results["confusion_matrix"], labels, f"Matrice di confusione (K={Config.K_NEIGHBORS})",
         str(out_dir / "holdout_cm_raw.png"), normalize=False
     )
     plot_confusion_matrix(
-        results["confusion_matrix"], labels, f"Confusion Matrix Normalized (K={Config.K_NEIGHBORS})",
+        results["confusion_matrix"], labels, f"Matrice di confusione normalizzata (K={Config.K_NEIGHBORS})",
         str(out_dir / "holdout_cm_norm.png"), normalize=True
     )
     fpr, tpr = results["roc_data"]
     plot_roc_curve(
-        fpr, tpr, results["metrics"]["auc"], f"ROC Curve (K={Config.K_NEIGHBORS})",
+        fpr, tpr, results["metrics"]["auc"], f"Curva ROC (K={Config.K_NEIGHBORS})",
         str(out_dir / "holdout_roc.png")
     )
     print(f"Grafici Holdout salvati in: {out_dir}")
@@ -104,16 +104,16 @@ def save_cv_plots(results: dict, method_name: str):
     """Gestisce salvataggio plot per K-Fold e Leave-P-Out."""
     out_dir = Config.OUTPUT_DIR / f"{method_name}_plots"
     out_dir.mkdir(parents=True, exist_ok=True)
-    labels = ["Benign (0)", "Malignant (1)"]
+    labels = ["Benigno (0)", "Maligno (1)"]
 
     plot_confusion_matrix(
-        results["aggregated_cm"], labels, f"Aggregated CM ({method_name})",
+        results["aggregated_cm"], labels, f"CM aggregata ({method_name})",
         str(out_dir / "aggregated_cm.png"), normalize=True
     )
 
     if "accuracy" in results.get("raw_metrics", {}):
         plot_metric_distribution(
-            results["raw_metrics"]["accuracy"], "Accuracy", f"Accuracy Distribution ({method_name})",
+            results["raw_metrics"]["accuracy"], "Accuracy", f"Distribuzione dell'accuratezza ({method_name})",
             str(out_dir / "accuracy_dist.png")
         )
     print(f"Grafici {method_name} salvati in: {out_dir}")

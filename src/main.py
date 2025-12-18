@@ -138,7 +138,7 @@ def save_plots(results: dict, mode: str, k: int, paths_obj):
             plot_metric_distribution(
                 values,
                 metric_name,
-                f"{metric_name.title()} distribution ({mode.title()}, K={k})",
+                f"Distribuzione {metric_name.title()} ({mode.title()}, K={k})",
                 str(out_dir / f"{metric_name}_dist.png")
             )
 
@@ -231,7 +231,7 @@ def main():
         if (val_mode in ["leavepout", "all"]) and should_run_lpo:
             execute_validation("leavepout", X, y, model_params, val_params, paths)
 
-        print_separator(" DONE ")
+        print_separator(" FINITO ")
 
     except Exception as e:
         print(f" [!] Errore: {e}")
