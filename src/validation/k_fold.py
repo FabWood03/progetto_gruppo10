@@ -37,7 +37,6 @@ class KFoldValidation(ValidationStrategy):
         indices = np.arange(n_samples)
         self.rng.shuffle(indices)
         folds = np.array_split(indices, self.n_splits)
-        print(folds)
 
         metrics_history = defaultdict(list)
         aggregated_cm = np.zeros((2, 2), dtype=np.int64)

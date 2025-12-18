@@ -70,8 +70,8 @@ def plot_confusion_matrix(
     ax.set_yticks(tick_marks)
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
-    ax.set_ylabel('True label')
-    ax.set_xlabel('Predicted label')
+    ax.set_ylabel('Etichetta reale')
+    ax.set_xlabel('Etichetta predetta')
 
     # Inserimento testo nelle celle (ottimizzato con itertools)
     thresh = cm_plot.max() / 2.0
@@ -106,8 +106,8 @@ def plot_roc_curve(
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.05)
 
-    ax.set_xlabel('False Positive Rate')
-    ax.set_ylabel('True Positive Rate')
+    ax.set_xlabel('Tasso di falsi positivi')
+    ax.set_ylabel('Tasso di veri positivi')
     ax.legend(loc="lower right")
 
     _save_and_close(fig, save_path)

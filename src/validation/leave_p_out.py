@@ -90,7 +90,6 @@ class LeavePOutValidation(ValidationStrategy):
                 print(f"Progresso: {i / n_combs:.1%} ({i}/{n_combs})", end="\r")
 
         # Statistiche finali
-        metrics_storage = np.asarray(metrics_storage)
         means = metrics_storage.mean(axis=0)
         stds = metrics_storage.std(axis=0)
 
@@ -99,16 +98,25 @@ class LeavePOutValidation(ValidationStrategy):
             "specificity", "precision", "f1", "gmean"
         ]
 
+        # Summary con media e std
         summary = {
-                      f"{name}_mean": float(means[i])
-                      for i, name in enumerate(metric_names)
-                  } | {
-                      f"{name}_std": float(stds[i])
-                      for i, name in enumerate(metric_names)
-                  }
+            f"{name}_mean": float(means[i])
+            for i, name in enumerate(metric_names)
+        }
+        summary.update({
+            f"{name}_std": float(stds[i])
+            for i, name in enumerate(metric_names)
+        })
+
+        # Raw metrics
+        raw_metrics = {
+            name: metrics_storage[:, i].tolist()
+            for i, name in enumerate(metric_names)
+        }
 
         return {
             "summary": summary,
+            "raw_metrics": raw_metrics,
             "aggregated_cm": aggregated_cm,
             "n_iterations": n_combs
         }
