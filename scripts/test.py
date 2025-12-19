@@ -4,6 +4,9 @@ from pathlib import Path
 from time import time
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import csv
 
 # --- Setup Path ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,7 +19,6 @@ from src.validation.holdout import HoldoutValidation
 from src.validation.k_fold import KFoldValidation
 from src.validation.leave_p_out import LeavePOutValidation
 from src.metrics.plotter import plot_confusion_matrix, plot_roc_curve, plot_metric_distribution
-from src.metrics.result_file import generate_results
 
 
 class Config:
@@ -39,6 +41,10 @@ class Config:
     OUTPUT_DIR = BASE_DIR / "outputs"
     INPUT_FILE = DATA_DIR / "version_1.csv"
     OUTPUT_CLEAN_FILE = DATA_DIR / "version_1_clean.csv"
+
+
+# Raccolta finale dei risultati
+RESULTS = []
 
 
 def _get_model() -> KNNClassifier:
@@ -78,6 +84,22 @@ def print_aggregate_metrics(summary: dict, duration: float):
     print(f"{'-' * 60}")
     print(f"{'Total Time':<20} | {duration:.4f} s")
     print(f"{'=' * 60}\n")
+
+def append_summary(method_name: str, summary: dict):
+    """
+    Aggiunge le metriche aggregate al contenitore finale.
+    """
+    for key, value in summary.items():
+        if key.endswith("_mean"):
+            metric = key.replace("_mean", "")
+            std = summary.get(f"{metric}_std", 0.0)
+
+            RESULTS.append({
+                "method": method_name,
+                "metric": metric,
+                "mean": value,
+                "std": std
+            })
 
 
 def save_holdout_plots(results: dict):
@@ -131,6 +153,11 @@ def run_holdout(X: np.ndarray, y: np.ndarray):
 
         print_scalar_metrics(results["metrics"], duration)
         save_holdout_plots(results)
+
+        append_summary(
+            "holdout",
+            {f"{k}_mean": v for k, v in results["metrics"].items()}
+        )
     except Exception:
         print("Errore Holdout:")
         traceback.print_exc()
@@ -147,6 +174,8 @@ def run_kfold(X: np.ndarray, y: np.ndarray):
 
         print_aggregate_metrics(results["summary"], duration)
         save_cv_plots(results, "kfold")
+
+        append_summary("kfold", results["summary"])
     except Exception:
         print("Errore K-Fold:")
         traceback.print_exc()
@@ -159,23 +188,47 @@ def run_lpo(X: np.ndarray, y: np.ndarray):
     try:
         start = time()
         results = validator.validate(_get_model(), X, y)
+        print(results.keys())
         duration = time() - start
 
         print_aggregate_metrics(results["summary"], duration)
         save_cv_plots(results, "leavepout")
 
-        generate_results(
-            y_true_list=results["y_true_folds"],
-            y_pred_list=results["y_pred_folds"],
-            y_score_list=results["y_score_folds"],
-            labels=["Benigno (0)", "Maligno (1)"],
-            output_dir=str(Config.OUTPUT_DIR / "leavepout_results"),
-            experiment_name="leavepout"
-        )
+        append_summary("leavepout", results["summary"])
 
     except Exception:
         print("Errore Leave-P-Out:")
         traceback.print_exc()
+
+def visualize_results(csv_path: Path, output_dir: Path):
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    df = pd.read_csv(csv_path)
+
+    # ===============================
+    #  TABELLA COME IMMAGINE
+    # ===============================
+    for method in df["method"].unique():
+        sub = df[df["method"] == method]
+        sub = sub.drop(columns=["method"])
+
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.axis("off")
+
+        table = ax.table(
+            cellText=sub.round(3).values,
+            colLabels=sub.columns,
+            loc="center"
+        )
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1, 1.4)
+
+        plt.title(f"Results – {method.upper()}")
+        plt.tight_layout()
+        plt.savefig(output_dir / f"table_{method}.png", dpi=200)
+        plt.close()
 
 
 def main():
@@ -204,6 +257,30 @@ def main():
             print(f"Modalità '{Config.VALIDATION_MODE}' non valida.")
 
         df_clean.to_csv(Config.OUTPUT_CLEAN_FILE, index=False)
+
+        # ===============================
+        # Scrittura file finale risultati
+        # ===============================
+        final_path = Config.OUTPUT_DIR / "final_results.csv"
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(final_path, mode="w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["method", "metric", "mean", "std"]
+            )
+            writer.writeheader()
+            writer.writerows(RESULTS)
+
+        print(f"\nRisultati finali salvati in: {final_path}")
+
+        visualize_results(
+            csv_path=final_path,
+            output_dir=Config.OUTPUT_DIR / "summary_tables"
+        )
+
+        print("Visualizzazioni avanzate salvate in:", Config.OUTPUT_DIR / "summary_tables")
+
 
     except Exception as e:
         print(f"Errore inatteso: {e}")
