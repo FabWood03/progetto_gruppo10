@@ -71,7 +71,7 @@ class KNNClassifier:
     def predict_with_distances(self, distances: np.ndarray) -> int:
         """Predice la classe usando distanze precalcolate."""
         if self.y_train is None: raise RuntimeError("KNN non addestrato")
-        neighbor_idxs = np.argsort(distances)[:self.k]
+        neighbor_idxs = np.argpartition(distances, self.k)[:self.k]
         return self._vote(self.y_train[neighbor_idxs])
 
     def predict_proba_with_distances(self, distances: np.ndarray) -> np.ndarray:
@@ -81,7 +81,7 @@ class KNNClassifier:
         if self.y_train is None: raise RuntimeError("KNN non addestrato")
 
         # 1. Trova i k vicini
-        neighbor_idxs = np.argsort(distances)[:self.k]
+        neighbor_idxs = np.argpartition(distances, self.k)[:self.k]
         neighbor_labels = self.y_train[neighbor_idxs]
 
         # 2. Calcola probabilità

@@ -1,15 +1,13 @@
 import numpy as np
 from collections import defaultdict
 from src.metrics import evaluate_metrics, confusion_counts
-<<<<<<< HEAD
+
 from src.validation.base import ValidationStrategy
 from src.validation.base import minmax_scale_train_test
 from src.validation.base import median_impute_train_test
 
 
-=======
-from src.validation.base import ValidationStrategy, minmax_scale_train_test
->>>>>>> main
+# from src.validation.base import ValidationStrategy, minmax_scale_train_test
 
 
 class KFoldValidation(ValidationStrategy):
@@ -46,15 +44,18 @@ class KFoldValidation(ValidationStrategy):
         # 2. LOOP SUI FOLD
         for i in range(self.n_splits):
             test_idx = folds[i]
-            train_idx = np.concatenate([folds[j] for j in range(self.n_splits) if j != i])
+
+            mask = np.ones(n_samples, dtype=bool)
+            mask[test_idx] = False
+
+            train_idx = np.where(mask)[0]
 
             X_train, y_train = X[train_idx], y[train_idx]
             X_test, y_test = X[test_idx], y[test_idx]
 
-
             # Imputazione dei NaN (solo sul training del fold)
             X_train, X_test = median_impute_train_test(X_train, X_test)
-        
+
             # Normalizzazione corretta (solo sul training del fold)
             X_train, X_test = minmax_scale_train_test(X_train, X_test)
 

@@ -70,8 +70,8 @@ def plot_confusion_matrix(
     ax.set_yticks(tick_marks)
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
-    ax.set_ylabel('True label')
-    ax.set_xlabel('Predicted label')
+    ax.set_ylabel('Etichetta reale')
+    ax.set_xlabel('Etichetta predetta')
 
     # Inserimento testo nelle celle (ottimizzato con itertools)
     thresh = cm_plot.max() / 2.0
@@ -106,15 +106,15 @@ def plot_roc_curve(
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.05)
 
-    ax.set_xlabel('False Positive Rate')
-    ax.set_ylabel('True Positive Rate')
+    ax.set_xlabel('Tasso di falsi positivi')
+    ax.set_ylabel('Tasso di veri positivi')
     ax.legend(loc="lower right")
 
     _save_and_close(fig, save_path)
 
 
 def plot_metric_distribution(
-        values: list[float] | np.ndarray,
+        values: Sequence[float],
         metric_name: str,
         title: str,
         save_path: PathType,
@@ -128,7 +128,7 @@ def plot_metric_distribution(
     ax.hist(values, bins=bins, color='skyblue', edgecolor='black', alpha=0.7)
 
     ax.set_xlabel(metric_name)
-    ax.set_ylabel('Frequency')
+    ax.set_ylabel('Frequenza')
     ax.grid(axis='y', linestyle='--', alpha=0.5)
 
     _save_and_close(fig, save_path)
