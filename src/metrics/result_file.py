@@ -98,4 +98,42 @@ def generate_results(
         save_path=str(output_dir / f"{experiment_name}_metrics.csv")
     )
 
+    # ===============================
+    # CONFUSION MATRIX (media)
+    # ===============================
+    all_y_true = np.concatenate(y_true_list)
+    all_y_pred = np.concatenate(y_pred_list)
+
+    c = confusion_counts(all_y_true, all_y_pred)
+
+    cm = np.array([
+        [c.tn, c.fp],
+        [c.fn, c.tp]
+    ])
+
+    plot_confusion_matrix(
+        cm=cm,
+        labels=labels,
+        title=f"Confusion Matrix - {experiment_name}",
+        save_path=output_dir / f"{experiment_name}_confusion_matrix.png",
+        normalize=False
+    )
+
+    # ===============================
+    # ROC CURVE
+    # ===============================
+    all_y_score = np.concatenate(y_score_list)
+
+    fpr, tpr, _ = roc_curve_manual(all_y_true, all_y_score)
+    auc_value = calculate_auc(fpr, tpr)
+
+    plot_roc_curve(
+        fpr=fpr,
+        tpr=tpr,
+        auc_value=auc_value,
+        title=f"ROC Curve - {experiment_name}",
+        save_path=output_dir / f"{experiment_name}_roc_curve.png"
+    )
+
+
 
