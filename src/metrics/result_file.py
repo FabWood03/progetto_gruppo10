@@ -135,5 +135,17 @@ def generate_results(
         save_path=output_dir / f"{experiment_name}_roc_curve.png"
     )
 
+    # ===============================
+    # DISTRIBUZIONE METRICHE
+    # ===============================
+    accuracies = [m["accuracy"] for m in all_metrics]
+
+    plot_metric_distribution(
+        values=accuracies,
+        metric_name="Accuracy",
+        title=f"Accuracy Distribution - {experiment_name}",
+        save_path=output_dir / f"{experiment_name}_accuracy_distribution.png"
+    )
+
 
 
