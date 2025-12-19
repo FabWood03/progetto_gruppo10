@@ -53,3 +53,18 @@ class TestKNNClassifier(unittest.TestCase):
         knn.fit(self.X, self.y)
         self.assertIsNotNone(knn.X_train)
         self.assertIsNotNone(knn.y_train)
+
+    # =========================
+    # _compute_distances
+    # =========================
+
+    def test_compute_distances_without_fit(self):
+        knn = KNNClassifier()
+        with self.assertRaises(RuntimeError):
+            knn._compute_distances(np.array([0, 0]))
+
+    def test_compute_distances_shape(self):
+        knn = KNNClassifier()
+        knn.fit(self.X, self.y)
+        dists = knn._compute_distances(np.array([0, 0]))
+        self.assertEqual(dists.shape, (self.X.shape[0],))
