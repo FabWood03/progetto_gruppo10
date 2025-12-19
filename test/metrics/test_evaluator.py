@@ -80,3 +80,32 @@ class TestZeroDivisionCases(unittest.TestCase):
     def test_zero_division_specificity(self):
         c = ConfusionCounts(tp=5, tn=0, fp=0, fn=5)
         self.assertEqual(specificity(c), 0.0)
+
+class TestROCAndAUC(unittest.TestCase):
+
+    def test_roc_curve_shapes(self):
+        y_true = [0, 0, 1, 1]
+        y_score = [0.1, 0.4, 0.35, 0.8]
+
+        fpr, tpr, thresholds = roc_curve_manual(y_true, y_score)
+
+        self.assertEqual(len(fpr), len(tpr))
+        self.assertEqual(len(tpr), len(thresholds))
+
+    def test_auc_perfect_classifier(self):
+        y_true = [0, 0, 1, 1]
+        y_score = [0.1, 0.2, 0.8, 0.9]
+
+        fpr, tpr, _ = roc_curve_manual(y_true, y_score)
+        auc = calculate_auc(fpr, tpr)
+
+        self.assertAlmostEqual(auc, 1.0)
+
+    def test_auc_random_classifier(self):
+        y_true = [0, 1, 0, 1]
+        y_score = [0.5, 0.5, 0.5, 0.5]
+
+        fpr, tpr, _ = roc_curve_manual(y_true, y_score)
+        auc = calculate_auc(fpr, tpr)
+
+        self.assertAlmostEqual(auc, 0.5, delta=0.1)
