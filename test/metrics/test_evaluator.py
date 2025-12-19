@@ -66,3 +66,17 @@ class TestScalarMetrics(unittest.TestCase):
         sens = sensitivity(self.c)
         spec = specificity(self.c)
         self.assertAlmostEqual(geometric_mean(self.c), np.sqrt(sens * spec))
+
+class TestZeroDivisionCases(unittest.TestCase):
+
+    def test_zero_division_precision(self):
+        c = ConfusionCounts(tp=0, tn=5, fp=0, fn=5)
+        self.assertEqual(precision(c), 0.0)
+
+    def test_zero_division_sensitivity(self):
+        c = ConfusionCounts(tp=0, tn=5, fp=2, fn=0)
+        self.assertEqual(sensitivity(c), 0.0)
+
+    def test_zero_division_specificity(self):
+        c = ConfusionCounts(tp=5, tn=0, fp=0, fn=5)
+        self.assertEqual(specificity(c), 0.0)
