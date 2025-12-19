@@ -54,3 +54,22 @@ class TestPlotConfusionMatrix(unittest.TestCase):
                     title="Invalid",
                     save_path=Path(tmp) / "cm.png"
                 )
+class TestPlotROC(unittest.TestCase):
+
+    def test_roc_curve_saved(self):
+        fpr = np.array([0.0, 0.5, 1.0])
+        tpr = np.array([0.0, 0.8, 1.0])
+        auc = 0.7
+
+        with tempfile.TemporaryDirectory() as tmp:
+            save_path = Path(tmp) / "roc.png"
+
+            plot_roc_curve(
+                fpr=fpr,
+                tpr=tpr,
+                auc_value=auc,
+                title="ROC Test",
+                save_path=save_path
+            )
+
+            self.assertTrue(save_path.exists())
