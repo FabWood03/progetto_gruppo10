@@ -109,3 +109,54 @@ class TestROCAndAUC(unittest.TestCase):
         auc = calculate_auc(fpr, tpr)
 
         self.assertAlmostEqual(auc, 0.5, delta=0.1)
+
+class TestEvaluateMetrics(unittest.TestCase):
+
+    def test_evaluate_selected_metrics(self):
+        y_true = [1, 0, 1, 0]
+        y_pred = [1, 0, 0, 0]
+
+        metrics = evaluate_metrics(
+            y_true=y_true,
+            y_pred=y_pred,
+            metrics=["accuracy", "precision"]
+        )
+
+        self.assertIn("accuracy", metrics)
+        self.assertIn("precision", metrics)
+        self.assertNotIn("f1", metrics)
+
+    def test_evaluate_with_auc(self):
+        y_true = [0, 0, 1, 1]
+        y_pred = [0, 0, 1, 1]
+        y_score = [0.1, 0.2, 0.8, 0.9]
+
+        metrics = evaluate_metrics(
+            y_true=y_true,
+            y_pred=y_pred,
+            y_score=y_score,
+            metrics=["auc"]
+        )
+
+        self.assertIn("auc", metrics)
+        self.assertAlmostEqual(metrics["auc"], 0.5)
+
+    def test_auc_without_score_raises(self):
+        with self.assertRaises(ValueError):
+            evaluate_metrics(
+                y_true=[0, 1],
+                y_pred=[0, 1],
+                metrics=["auc"]
+            )
+
+    def test_unknown_metric_raises(self):
+        with self.assertRaises(ValueError):
+            evaluate_metrics(
+                y_true=[0, 1],
+                y_pred=[0, 1],
+                metrics=["invalid_metric"]
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
