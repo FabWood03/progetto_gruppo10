@@ -16,6 +16,7 @@ from src.validation.holdout import HoldoutValidation
 from src.validation.k_fold import KFoldValidation
 from src.validation.leave_p_out import LeavePOutValidation
 from src.metrics.plotter import plot_confusion_matrix, plot_roc_curve, plot_metric_distribution
+from src.metrics.result_file import generate_results
 
 
 class Config:
@@ -162,6 +163,16 @@ def run_lpo(X: np.ndarray, y: np.ndarray):
 
         print_aggregate_metrics(results["summary"], duration)
         save_cv_plots(results, "leavepout")
+
+        generate_results(
+            y_true_list=results["y_true_folds"],
+            y_pred_list=results["y_pred_folds"],
+            y_score_list=results["y_score_folds"],
+            labels=["Benigno (0)", "Maligno (1)"],
+            output_dir=str(Config.OUTPUT_DIR / "leavepout_results"),
+            experiment_name="leavepout"
+        )
+
     except Exception:
         print("Errore Leave-P-Out:")
         traceback.print_exc()
