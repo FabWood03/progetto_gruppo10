@@ -67,3 +67,48 @@ class TestKFoldValidation(unittest.TestCase):
                        "specificity", "precision", "f1", "gmean", "auc"]:
             self.assertIn(f"{metric}_mean", summary)
             self.assertIn(f"{metric}_std", summary)
+
+    # =========================
+    # Confusion matrix aggregata
+    # =========================
+    def test_aggregated_confusion_matrix_shape(self):
+        validator = KFoldValidation(n_splits=3, random_state=1)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+        cm = result["aggregated_cm"]
+
+        self.assertEqual(cm.shape, (2, 2))
+
+    # =========================
+    # Numero fold corretto
+    # =========================
+    def test_number_of_folds(self):
+        n_splits = 4
+        validator = KFoldValidation(n_splits=n_splits, random_state=10)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+        folds = result["folds_indices"]
+
+        self.assertEqual(len(folds), n_splits)
+
+    # =========================
+    # Riproducibilità
+    # =========================
+    def test_kfold_is_reproducible(self):
+        model1 = DummyModel()
+        model2 = DummyModel()
+
+        validator1 = KFoldValidation(n_splits=5, random_state=99)
+        validator2 = KFoldValidation(n_splits=5, random_state=99)
+
+        res1 = validator1.validate(model1, self.X, self.y)
+        res2 = validator2.validate(model2, self.X, self.y)
+
+        for f1, f2 in zip(res1["folds_indices"], res2["folds_indices"]):
+            np.testing.assert_array_equal(f1, f2)
+
+
+if __name__ == "__main__":
+    unittest.main()
