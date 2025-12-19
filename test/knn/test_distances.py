@@ -148,6 +148,27 @@ class TestDistances(unittest.TestCase):
         res_para = strategy.calculate(x_para, mat_para)
         self.assertAlmostEqual(res_para[0], 0.0)
 
+    def test_cosine_zero_row_in_matrix(self):
+        """
+        Cosine distance con una riga nulla nella matrix.
+        Deve attivare il ramo denom == 0 senza crash o NaN.
+        """
+        strategy = CosineDistance()
+
+        x = np.array([1.0, 1.0])
+        matrix = np.array([
+            [0.0, 0.0],   # norma zero → denom == 0
+            [1.0, 1.0]
+        ])
+
+        result = strategy.calculate(x, matrix)
+
+        # La distanza deve essere finita
+        self.assertTrue(np.isfinite(result[0]))
+        # Vettori identici → distanza 0
+        self.assertAlmostEqual(result[1], 0.0)
+
+
 
     # =========================
     # CASI LIMITE / ERRORI
