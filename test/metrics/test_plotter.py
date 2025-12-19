@@ -73,3 +73,40 @@ class TestPlotROC(unittest.TestCase):
             )
 
             self.assertTrue(save_path.exists())
+class TestMetricDistribution(unittest.TestCase):
+
+    def test_metric_distribution_saved(self):
+        values = [0.8, 0.85, 0.9, 0.88]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            save_path = Path(tmp) / "hist.png"
+
+            plot_metric_distribution(
+                values=values,
+                metric_name="Accuracy",
+                title="Accuracy Distribution",
+                save_path=save_path,
+                bins=5
+            )
+
+            self.assertTrue(save_path.exists())
+
+    def test_metric_distribution_empty_values(self):
+        values = []
+
+        with tempfile.TemporaryDirectory() as tmp:
+            save_path = Path(tmp) / "hist.png"
+
+            # matplotlib accetta liste vuote → non deve crashare
+            plot_metric_distribution(
+                values=values,
+                metric_name="Accuracy",
+                title="Empty",
+                save_path=save_path
+            )
+
+            self.assertTrue(save_path.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
