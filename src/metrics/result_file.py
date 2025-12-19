@@ -3,14 +3,14 @@ from typing import List, Sequence
 
 import numpy as np
 
-from evaluator import (
+from src.metrics.evaluator import (
     evaluate_metrics,
     confusion_counts,
     roc_curve_manual,
     calculate_auc
 )
 
-from plotter import (
+from src.metrics.plotter import (
     plot_confusion_matrix,
     plot_roc_curve,
     plot_metric_distribution
