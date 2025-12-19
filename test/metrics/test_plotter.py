@@ -97,7 +97,6 @@ class TestMetricDistribution(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             save_path = Path(tmp) / "hist.png"
 
-            # matplotlib accetta liste vuote → non deve crashare
             plot_metric_distribution(
                 values=values,
                 metric_name="Accuracy",
