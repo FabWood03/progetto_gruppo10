@@ -28,3 +28,29 @@ class TestPlotConfusionMatrix(unittest.TestCase):
             )
 
             self.assertTrue(save_path.exists())
+
+    def test_confusion_matrix_invalid_shape(self):
+        cm = np.array([1, 2, 3])
+        labels = ["A", "B"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_confusion_matrix(
+                    cm=cm,
+                    labels=labels,
+                    title="Invalid",
+                    save_path=Path(tmp) / "cm.png"
+                )
+
+    def test_confusion_matrix_label_mismatch(self):
+        cm = np.array([[1, 0], [0, 1]])
+        labels = ["OnlyOneLabel"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                plot_confusion_matrix(
+                    cm=cm,
+                    labels=labels,
+                    title="Invalid",
+                    save_path=Path(tmp) / "cm.png"
+                )
