@@ -75,3 +75,13 @@ class TestMedianImputation(unittest.TestCase):
 
         self.assertFalse(np.isnan(X_train_i).any())
         self.assertFalse(np.isnan(X_test_i).any())
+
+class TestValidationStrategy(unittest.TestCase):
+
+    def test_validation_strategy_is_abstract(self):
+        with self.assertRaises(TypeError):
+            ValidationStrategy()
+
+
+if __name__ == "__main__":
+    unittest.main()
