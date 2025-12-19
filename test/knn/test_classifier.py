@@ -37,3 +37,19 @@ class TestKNNClassifier(unittest.TestCase):
         knn = KNNClassifier()
         with self.assertRaises(ValueError):
             knn.fit(self.X, np.array([[0, 1, 1]]))
+
+    def test_fit_length_mismatch(self):
+        knn = KNNClassifier()
+        with self.assertRaises(ValueError):
+            knn.fit(self.X, np.array([0, 1]))
+
+    def test_fit_k_greater_than_samples(self):
+        knn = KNNClassifier(k=10)
+        with self.assertRaises(ValueError):
+            knn.fit(self.X, self.y)
+
+    def test_fit_success(self):
+        knn = KNNClassifier()
+        knn.fit(self.X, self.y)
+        self.assertIsNotNone(knn.X_train)
+        self.assertIsNotNone(knn.y_train)
