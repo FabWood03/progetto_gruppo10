@@ -23,3 +23,14 @@ class TestFullPipelineIntegration(unittest.TestCase):
             distance="euclidean",
             random_state=42
         )
+
+    def test_holdout_pipeline_runs(self):
+        validator = HoldoutValidation(test_size=0.2, random_state=42)
+        result = validator.validate(self.model, self.X, self.y)
+
+        self.assertIn("metrics", result)
+        self.assertIn("confusion_matrix", result)
+        self.assertEqual(result["confusion_matrix"].shape, (2, 2))
+
+        for value in result["metrics"].values():
+            self.assertFalse(np.isnan(value))
