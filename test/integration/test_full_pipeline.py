@@ -47,3 +47,15 @@ class TestFullPipelineIntegration(unittest.TestCase):
 
         for value in result["summary"].values():
             self.assertFalse(np.isnan(value))
+
+    def test_leave_p_out_pipeline_runs(self):
+        validator = LeavePOutValidation(p=1)
+        result = validator.validate(self.model, self.X, self.y)
+
+        self.assertIn("summary", result)
+        self.assertIn("raw_metrics", result)
+        self.assertEqual(result["aggregated_cm"].shape, (2, 2))
+        self.assertGreater(result["n_iterations"], 0)
+
+if __name__ == "__main__":
+    unittest.main()
