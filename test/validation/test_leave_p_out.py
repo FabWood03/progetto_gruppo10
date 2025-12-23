@@ -73,3 +73,35 @@ class TestLeavePOutValidation(unittest.TestCase):
         self.assertIn("raw_metrics", result)
         self.assertIn("aggregated_cm", result)
         self.assertIn("n_iterations", result)
+
+    # =========================
+    # Shape confusion matrix
+    # =========================
+    def test_aggregated_confusion_matrix_shape(self):
+        validator = LeavePOutValidation(p=1)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+        cm = result["aggregated_cm"]
+
+        self.assertEqual(cm.shape, (2, 2))
+
+    # =========================
+    # Metriche summary presenti
+    # =========================
+    def test_summary_metrics_keys(self):
+        validator = LeavePOutValidation(p=1)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+        summary = result["summary"]
+
+        metrics = [
+            "accuracy", "error", "sensitivity",
+            "specificity", "precision", "f1", "gmean"
+        ]
+
+        for m in metrics:
+            self.assertIn(f"{m}_mean", summary)
+            self.assertIn(f"{m}_std", summary)
+
