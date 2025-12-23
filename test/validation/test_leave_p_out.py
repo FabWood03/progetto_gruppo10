@@ -105,3 +105,45 @@ class TestLeavePOutValidation(unittest.TestCase):
             self.assertIn(f"{m}_mean", summary)
             self.assertIn(f"{m}_std", summary)
 
+    # =========================
+    # Lunghezza raw metrics
+    # =========================
+    def test_raw_metrics_length(self):
+        p = 1
+        validator = LeavePOutValidation(p=p)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+        n_iters = result["n_iterations"]
+
+        for values in result["raw_metrics"].values():
+            self.assertEqual(len(values), n_iters)
+
+    # =========================
+    # No data leakage
+    # =========================
+    def test_no_data_leakage(self):
+        p = 3
+        validator = LeavePOutValidation(p=p)
+        model = DummyModel()
+
+        validator.validate(model, self.X, self.y)
+
+        # Ogni fit deve usare n - p campioni
+        self.assertEqual(model.X_train_.shape[0], len(self.X) - p)
+
+    # =========================
+    # Stabilità numerica
+    # =========================
+    def test_no_nan_in_summary(self):
+        validator = LeavePOutValidation(p=1)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+
+        for value in result["summary"].values():
+            self.assertFalse(np.isnan(value))
+
+
+if __name__ == "__main__":
+    unittest.main()
