@@ -12,8 +12,10 @@ class TestFullPipelineIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        base_dir = Path(__file__).resolve().parent.parent.parent
-        data_path = base_dir / "data" / "version_1_clean.csv"
+        base_dir = Path(__file__).resolve().parents[2]
+
+        data_path = base_dir / "data" / "version_1.csv"
+        assert data_path.exists(), f"Dataset not found: {data_path}"
 
         loader = DataLoader(str(data_path))
         cls.X, cls.y, _ = loader.load()
@@ -33,4 +35,15 @@ class TestFullPipelineIntegration(unittest.TestCase):
         self.assertEqual(result["confusion_matrix"].shape, (2, 2))
 
         for value in result["metrics"].values():
+            self.assertFalse(np.isnan(value))
+
+    def test_kfold_pipeline_runs(self):
+        validator = KFoldValidation(n_splits=5, random_state=42)
+        result = validator.validate(self.model, self.X, self.y)
+
+        self.assertIn("summary", result)
+        self.assertIn("aggregated_cm", result)
+        self.assertEqual(result["aggregated_cm"].shape, (2, 2))
+
+        for value in result["summary"].values():
             self.assertFalse(np.isnan(value))
