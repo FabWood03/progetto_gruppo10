@@ -44,3 +44,32 @@ class TestLeavePOutValidation(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             validator.validate(model, self.X, self.y)
+
+    # =========================
+    # Numero iterazioni corretto
+    # =========================
+
+    def test_number_of_iterations(self):
+        p = 2
+        validator = LeavePOutValidation(p=p)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+
+        expected = math.comb(len(self.X), p)
+        self.assertEqual(result["n_iterations"], expected)
+
+    # =========================
+    # Struttura output
+    # =========================
+
+    def test_output_structure(self):
+        validator = LeavePOutValidation(p=1)
+        model = DummyModel()
+
+        result = validator.validate(model, self.X, self.y)
+
+        self.assertIn("summary", result)
+        self.assertIn("raw_metrics", result)
+        self.assertIn("aggregated_cm", result)
+        self.assertIn("n_iterations", result)
