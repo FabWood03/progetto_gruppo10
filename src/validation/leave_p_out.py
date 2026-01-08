@@ -2,6 +2,8 @@ import math
 import time
 import numpy as np
 from itertools import combinations
+from src.validation.base import median_impute_train_test, minmax_scale_train_test
+
 
 from src.metrics import (
     confusion_counts, accuracy_rate, error_rate, sensitivity,
@@ -53,9 +55,14 @@ class LeavePOutValidation(ValidationStrategy):
             X_train, y_train = X[train_mask], y[train_mask]
             X_test, y_test = X[test_idx], y[test_idx]
 
+            # Imputazione NaN (solo sul training di questa iterazione)
+            X_train, X_test = median_impute_train_test(X_train, X_test)
+
+            # Normalizzazione (solo sul training di questa iterazione)
+            X_train, X_test = minmax_scale_train_test(X_train, X_test)
+
             # Fit
             model.fit(X_train, y_train)
-
             # Predict
             y_pred = model.predict(X_test)
 
