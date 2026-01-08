@@ -137,7 +137,7 @@ def roc_curve_manual(
 
     # Indici per ogni soglia
     for i, thr in enumerate(thresholds[1:], start=1):
-        idx = np.searchsorted(y_score_sorted, thr, side='left')
+        idx = np.searchsorted(-y_score_sorted, -thr, side='right')
         tpr[i] = _safe_div(tp_cumsum[idx - 1] if idx > 0 else 0, tot_pos)
         fpr[i] = _safe_div(fp_cumsum[idx - 1] if idx > 0 else 0, tot_neg)
 
