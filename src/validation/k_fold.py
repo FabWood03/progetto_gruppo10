@@ -67,7 +67,7 @@ class KFoldValidation(ValidationStrategy):
             probas = model.predict_proba(X_test)
 
             # Estrazione score per classe positiva (1)
-            y_score = probas[:, 1] if probas.ndim > 1 and probas.shape[1] > 1 else probas.flatten()
+            y_score = probas[:, 1] #if probas.ndim > 1 and probas.shape[1] > 1 else probas.flatten()
 
             # 3. VALUTAZIONE
             fold_metrics = evaluate_metrics(

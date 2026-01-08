@@ -77,21 +77,20 @@ class KNNClassifier:
     def predict_proba_with_distances(self, distances: np.ndarray) -> np.ndarray:
         """
         Predice le probabilità usando distanze precalcolate.
-        """
-        if self.y_train is None: raise RuntimeError("KNN non addestrato")
 
-        # 1. Trova i k vicini
+        Convenzione progetto (binaria): ritorna SEMPRE un array di lunghezza 2:
+        [P(classe=0), P(classe=1)].
+        """
+        if self.y_train is None:
+            raise RuntimeError("KNN non addestrato")
+
         neighbor_idxs = np.argpartition(distances, self.k)[:self.k]
         neighbor_labels = self.y_train[neighbor_idxs]
 
-        # 2. Calcola probabilità
-        classes = np.unique(self.y_train)
+        p1 = float(np.sum(neighbor_labels == 1) / self.k)
+        p0 = 1.0 - p1
+        return np.array([p0, p1], dtype=float)
 
-        proba = np.zeros(len(classes))
-        for i, c in enumerate(classes):
-            proba[i] = np.sum(neighbor_labels == c) / self.k
-
-        return proba
 
     def predict_one(self, x: np.ndarray) -> int:
         dists = self._compute_distances(x)
