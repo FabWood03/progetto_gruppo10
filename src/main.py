@@ -232,11 +232,6 @@ def main():
 
         # 2. Configurazione con default da .ini
         print("\n [2/4] Configurazione Parametri")
-        # model_params = {
-        #     "k": InputHandler.get_int("   - Numero vicini (K)", 1, X.shape[0], config['MODEL_DEFAULTS']['k']),
-        #     "metric": InputHandler.get_choice("   - Metrica distanza", ["euclidean", "manhattan", "chebyshev"],
-        #                                       config['MODEL_DEFAULTS']['metric'])
-        # }
         model_params = {
             "k": (
                 args.k if args.k is not None else
@@ -258,8 +253,6 @@ def main():
 
         print(f" [INFO] Parametri modello: K={model_params['k']}, Distance={model_params['metric']}")
 
-        # val_mode = InputHandler.get_choice("\n   - Modalità validazione", ["holdout", "kfold", "leavepout", "all"],
-        #                                    "all")
         val_mode = (
             args.mode if args.mode is not None else
             InputHandler.get_choice(
@@ -269,11 +262,6 @@ def main():
             )
         )
 
-        # val_params = {
-        #     "split": config.getfloat('VALIDATION_DEFAULTS', 'test_split'),
-        #     "splits": config.getint('VALIDATION_DEFAULTS', 'n_splits'),
-        #     "p": config.getint('VALIDATION_DEFAULTS', 'lpo_p')
-        # }
         val_params = {
             "split": args.test_split if args.test_split is not None
             else config.getfloat('VALIDATION_DEFAULTS', 'test_split'),
