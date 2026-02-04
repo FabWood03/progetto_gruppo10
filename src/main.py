@@ -17,6 +17,41 @@ from src.validation.holdout import HoldoutValidation
 from src.validation.k_fold import KFoldValidation
 from src.validation.leave_p_out import LeavePOutValidation
 from src.metrics.plotter import plot_confusion_matrix, plot_roc_curve, plot_metric_distribution
+import argparse
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="KNN Classifier Pipeline"
+    )
+
+    # --- Model ---
+    parser.add_argument("--k", type=int, help="Numero di vicini")
+    parser.add_argument(
+        "--metric",
+        choices=["euclidean", "manhattan", "chebyshev"],
+        help="Metrica di distanza"
+    )
+
+    # --- Validazione ---
+    parser.add_argument(
+        "--mode",
+        choices=["holdout", "kfold", "leavepout", "all"],
+        help="Modalità di validazione"
+    )
+
+    parser.add_argument("--test-split", type=float, help="Percentuale test (holdout)")
+    parser.add_argument("--n-splits", type=int, help="Numero fold (k-fold)")
+    parser.add_argument("--p", type=int, help="Valore P (leave-p-out)")
+
+    # --- Flags ---
+    parser.add_argument(
+        "--no-interactive",
+        action="store_true",
+        help="Disabilita input interattivo (batch mode)"
+    )
+
+    return parser.parse_args()
 
 
 # --- Global Config Loader ---
@@ -174,6 +209,8 @@ def execute_validation(mode, X, y, model_params, val_params, paths_obj):
 
 # --- MAIN ---
 def main():
+    args = parse_args()
+
     try:
         # 0. Caricamento configurazione .ini
         config = load_config()
@@ -195,32 +232,105 @@ def main():
 
         # 2. Configurazione con default da .ini
         print("\n [2/4] Configurazione Parametri")
+        # model_params = {
+        #     "k": InputHandler.get_int("   - Numero vicini (K)", 1, X.shape[0], config['MODEL_DEFAULTS']['k']),
+        #     "metric": InputHandler.get_choice("   - Metrica distanza", ["euclidean", "manhattan", "chebyshev"],
+        #                                       config['MODEL_DEFAULTS']['metric'])
+        # }
         model_params = {
-            "k": InputHandler.get_int("   - Numero vicini (K)", 1, X.shape[0], config['MODEL_DEFAULTS']['k']),
-            "metric": InputHandler.get_choice("   - Metrica distanza", ["euclidean", "manhattan", "chebyshev"],
-                                              config['MODEL_DEFAULTS']['metric'])
+            "k": (
+                args.k if args.k is not None else
+                InputHandler.get_int(
+                    "   - Numero vicini (K)",
+                    1, X.shape[0],
+                    config['MODEL_DEFAULTS']['k']
+                ) if not args.no_interactive else int(config['MODEL_DEFAULTS']['k'])
+            ),
+            "metric": (
+                args.metric if args.metric is not None else
+                InputHandler.get_choice(
+                    "   - Metrica distanza",
+                    ["euclidean", "manhattan", "chebyshev"],
+                    config['MODEL_DEFAULTS']['metric']
+                ) if not args.no_interactive else config['MODEL_DEFAULTS']['metric']
+            )
         }
 
-        val_mode = InputHandler.get_choice("\n   - Modalità validazione", ["holdout", "kfold", "leavepout", "all"],
-                                           "all")
+        print(f" [INFO] Parametri modello: K={model_params['k']}, Distance={model_params['metric']}")
 
+        # val_mode = InputHandler.get_choice("\n   - Modalità validazione", ["holdout", "kfold", "leavepout", "all"],
+        #                                    "all")
+        val_mode = (
+            args.mode if args.mode is not None else
+            InputHandler.get_choice(
+                "\n   - Modalità validazione",
+                ["holdout", "kfold", "leavepout", "all"],
+                "all"
+            )
+        )
+
+        # val_params = {
+        #     "split": config.getfloat('VALIDATION_DEFAULTS', 'test_split'),
+        #     "splits": config.getint('VALIDATION_DEFAULTS', 'n_splits'),
+        #     "p": config.getint('VALIDATION_DEFAULTS', 'lpo_p')
+        # }
         val_params = {
-            "split": config.getfloat('VALIDATION_DEFAULTS', 'test_split'),
-            "splits": config.getint('VALIDATION_DEFAULTS', 'n_splits'),
-            "p": config.getint('VALIDATION_DEFAULTS', 'lpo_p')
-        }
+            "split": args.test_split if args.test_split is not None
+            else config.getfloat('VALIDATION_DEFAULTS', 'test_split'),
 
-        if val_mode in ["holdout", "all"]:
-            val_params["split"] = InputHandler.get_float("   - [Holdout] % Test Set", 0.0, 1.0, val_params["split"])
-        if val_mode in ["kfold", "all"]:
-            val_params["splits"] = InputHandler.get_int("   - [K-Fold] Numero Fold", 2, 50, val_params["splits"])
+            "splits": args.n_splits if args.n_splits is not None
+            else config.getint('VALIDATION_DEFAULTS', 'n_splits'),
+
+            "p": args.p if args.p is not None
+            else config.getint('VALIDATION_DEFAULTS', 'lpo_p')
+        }
 
         should_run_lpo = True
+
+        # --- HOLDOUT ---
+        if val_mode in ["holdout", "all"]:
+            if args.test_split is not None:
+                val_params["split"] = args.test_split
+            elif not args.no_interactive:
+                val_params["split"] = InputHandler.get_float(
+                    "   - [Holdout] % Test Set",
+                    0.0, 1.0,
+                    val_params["split"]
+                )
+
+        # --- K-FOLD ---
+        if val_mode in ["kfold", "all"]:
+            if args.n_splits is not None:
+                val_params["splits"] = args.n_splits
+            elif not args.no_interactive:
+                val_params["splits"] = InputHandler.get_int(
+                    "   - [K-Fold] Numero Fold",
+                    2, 50,
+                    val_params["splits"]
+                )
+
+        # --- LEAVE-P-OUT ---
         if val_mode in ["leavepout", "all"]:
-            val_params["p"] = InputHandler.get_int("   - [Leave-P-Out] Valore P", 1, 10, val_params["p"])
+            if args.p is not None:
+                val_params["p"] = args.p
+            elif not args.no_interactive:
+                val_params["p"] = InputHandler.get_int(
+                    "   - [Leave-P-Out] Valore P",
+                    1, 10,
+                    val_params["p"]
+                )
+
+            # controllo costo computazionale
             if val_params["p"] > 2 and X.shape[0] > 100:
-                if InputHandler.get_choice("     ATTENZIONE: P pesante. Procedere?", ["s", "n"], "n") == "n":
-                    should_run_lpo = False
+                if not args.no_interactive:
+                    if InputHandler.get_choice(
+                            "     ATTENZIONE: P pesante. Procedere?",
+                            ["s", "n"],
+                            "n"
+                    ) == "n":
+                        should_run_lpo = False
+                else:
+                    print(" [WARN] Leave-P-Out pesante, ma eseguito in batch mode.")
 
         # 3. Esecuzione
         print("\n [3/4] Avvio Elaborazione...")
@@ -231,6 +341,7 @@ def main():
         if (val_mode in ["leavepout", "all"]) and should_run_lpo:
             execute_validation("leavepout", X, y, model_params, val_params, paths)
 
+        print("\n [4/4] Salvataggio risultati e grafici / Fine")
         print_separator(" FINITO ")
 
     except Exception as e:
