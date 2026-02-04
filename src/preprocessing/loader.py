@@ -73,6 +73,17 @@ class DataLoader:
 
 
     def load(self):
+
+        """
+    Esegue la pipeline di preprocessing del dataset e prepara i dati
+    per la fase di classificazione.
+
+    :return:
+        - X: matrice delle feature preprocessate
+        - y: vettore delle etichette binarie
+        - df: dataframe preprocessato completo
+        """
+    
         # 1. Caricamento dataset
         df = load_raw_dataset(self.path)
 
