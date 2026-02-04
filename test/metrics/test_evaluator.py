@@ -99,7 +99,7 @@ class TestROCAndAUC(unittest.TestCase):
         fpr, tpr, _ = roc_curve_manual(y_true, y_score)
         auc = calculate_auc(fpr, tpr)
 
-        self.assertAlmostEqual(auc, 0.5)
+        self.assertAlmostEqual(auc, 1)
 
     def test_auc_random_classifier(self):
         y_true = [0, 1, 0, 1]
@@ -108,7 +108,7 @@ class TestROCAndAUC(unittest.TestCase):
         fpr, tpr, _ = roc_curve_manual(y_true, y_score)
         auc = calculate_auc(fpr, tpr)
 
-        self.assertAlmostEqual(auc, 0.0)
+        self.assertAlmostEqual(auc, 0.5)
 
 class TestEvaluateMetrics(unittest.TestCase):
 
@@ -139,7 +139,7 @@ class TestEvaluateMetrics(unittest.TestCase):
         )
 
         self.assertIn("auc", metrics)
-        self.assertAlmostEqual(metrics["auc"], 0.5)
+        self.assertAlmostEqual(metrics["auc"], 1)
 
     def test_auc_without_score_raises(self):
         with self.assertRaises(ValueError):
