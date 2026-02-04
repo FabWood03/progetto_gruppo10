@@ -142,7 +142,51 @@ python src/main.py --mode kfold --k 5 --metric manhattan --n-splits 10 --no-inte
 ```bash
 python src/main.py --no-interactive
 ```
-## Struttura del Progetto
+## Struttura del progetto
+
+```text
+progetto_gruppo10/
+├── .dockerignore                # Esclude file dalla build Docker
+├── .gitignore                   # Definisce i file da ignorare
+├── config.ini                   # File di configurazione parametri
+├── Dockerfile                   # Configurazione per creare l'immagine Docker
+├── README.md                    # Documentazione del progetto
+├── requirements.txt             # Elenco delle librerie
+│
+├── data/                        # Cartella per il dataset
+│   └── .gitkeep
+│
+├── outputs/                     # Cartella per salvare output
+│
+├── test/                        # Test automatici
+│
+└── src/                         # Codice sorgente principale
+    ├── __init__.py
+    ├── main.py                  # Entry point applicazione
+    ├── utils.py                 # Funzioni di utilità condivise
+    │
+    ├── knn/                     # Modulo Algoritmo KNN
+    │   ├── __init__.py
+    │   ├── classifier.py        # Classe KNN
+    │   └── distances.py         # Calcolo distanze
+    │
+    ├── preprocessing/           # Modulo Preprocessing dati
+    │   ├── __init__.py
+    │   └── loader.py            # Caricamento e gestione iniziale dei dati
+    │
+    ├── validation/              # Modulo Validazione
+    │   ├── __init__.py
+    │   ├── base.py              # Classe astratta ValidationStrategy
+    │   ├── holdout.py           # Implementazione Holdout
+    │   ├── k_fold.py            # Implementazione K-Fold
+    │   └── leave_p_out.py       # Implementazione Leave-P-Out
+    │
+    └── metrics/                 # Modulo Valutazione e Grafici
+        ├── __init__.py
+        ├── evaluator.py         # Calcolo metriche (Accuracy, Sensitivity, ecc.)
+        └── plotter.py           # Creazione grafici
+
+```
 
 ## Dataset
 
