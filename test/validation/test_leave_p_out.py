@@ -5,13 +5,32 @@ import math
 from src.validation.leave_p_out import LeavePOutValidation
 
 
+"""
+Questo file testa la strategia Leave-P-Out.
+
+Obiettivi:
+1) Verificare correttezza parametro p
+2) Verificare numero combinazioni (n choose p)
+3) Verificare struttura output
+4) Verificare assenza di data leakage
+5) Verificare stabilità numerica delle metriche
+"""
+
+
+# =========================================================
+# MODELLO FITTIZIO
+# =========================================================
+
 class DummyModel:
     """
-    Modello fittizio per testare Leave-P-Out.
-    Predice sempre 0, fit minimale.
+    Modello minimale per isolare la logica
+    della validazione Leave-P-Out.
+
+    Predice sempre classe 0.
     """
 
     def fit(self, X, y):
+        # Memorizzo training usato
         self.X_train_ = np.array(X)
         self.y_train_ = np.array(y)
 
@@ -19,18 +38,29 @@ class DummyModel:
         return np.zeros(len(X), dtype=int)
 
 
+# =========================================================
+# TEST LEAVE-P-OUT
+# =========================================================
+
 class TestLeavePOutValidation(unittest.TestCase):
 
     def setUp(self):
+        """
+        Dataset sintetico riproducibile.
+        """
         rng = np.random.default_rng(42)
 
         self.X = rng.normal(size=(10, 4))
         self.y = rng.integers(0, 2, size=10)
 
     # =========================
-    # Costruttore
+    # COSTRUTTORE
     # =========================
+
     def test_invalid_p_raises(self):
+        """
+        p deve essere >= 1.
+        """
         with self.assertRaises(ValueError):
             LeavePOutValidation(p=0)
 
@@ -39,6 +69,9 @@ class TestLeavePOutValidation(unittest.TestCase):
     # =========================
 
     def test_p_greater_equal_n_samples_raises(self):
+        """
+        Non ha senso lasciare fuori tutti i campioni.
+        """
         validator = LeavePOutValidation(p=10)
         model = DummyModel()
 
@@ -46,10 +79,14 @@ class TestLeavePOutValidation(unittest.TestCase):
             validator.validate(model, self.X, self.y)
 
     # =========================
-    # Numero iterazioni corretto
+    # NUMERO ITERAZIONI
     # =========================
 
     def test_number_of_iterations(self):
+        """
+        Leave-P-Out genera C(n, p) combinazioni.
+        Verifico correttezza formula combinatoria.
+        """
         p = 2
         validator = LeavePOutValidation(p=p)
         model = DummyModel()
@@ -60,10 +97,17 @@ class TestLeavePOutValidation(unittest.TestCase):
         self.assertEqual(result["n_iterations"], expected)
 
     # =========================
-    # Struttura output
+    # STRUTTURA OUTPUT
     # =========================
 
     def test_output_structure(self):
+        """
+        Verifico che l'output contenga:
+        - summary (metriche aggregate)
+        - raw_metrics (metriche per iterazione)
+        - aggregated_cm (matrice cumulativa)
+        - n_iterations
+        """
         validator = LeavePOutValidation(p=1)
         model = DummyModel()
 
@@ -75,9 +119,13 @@ class TestLeavePOutValidation(unittest.TestCase):
         self.assertIn("n_iterations", result)
 
     # =========================
-    # Shape confusion matrix
+    # MATRICE CONFUSIONE
     # =========================
+
     def test_aggregated_confusion_matrix_shape(self):
+        """
+        Deve essere sempre 2x2.
+        """
         validator = LeavePOutValidation(p=1)
         model = DummyModel()
 
@@ -87,9 +135,14 @@ class TestLeavePOutValidation(unittest.TestCase):
         self.assertEqual(cm.shape, (2, 2))
 
     # =========================
-    # Metriche summary presenti
+    # METRICHE SUMMARY
     # =========================
+
     def test_summary_metrics_keys(self):
+        """
+        Verifico presenza mean e std
+        per tutte le metriche principali.
+        """
         validator = LeavePOutValidation(p=1)
         model = DummyModel()
 
@@ -106,9 +159,14 @@ class TestLeavePOutValidation(unittest.TestCase):
             self.assertIn(f"{m}_std", summary)
 
     # =========================
-    # Lunghezza raw metrics
+    # RAW METRICS
     # =========================
+
     def test_raw_metrics_length(self):
+        """
+        Ogni metrica deve avere
+        una misura per ogni iterazione.
+        """
         p = 1
         validator = LeavePOutValidation(p=p)
         model = DummyModel()
@@ -120,22 +178,32 @@ class TestLeavePOutValidation(unittest.TestCase):
             self.assertEqual(len(values), n_iters)
 
     # =========================
-    # No data leakage
+    # NO DATA LEAKAGE
     # =========================
+
     def test_no_data_leakage(self):
+        """
+        In ogni iterazione il training deve avere n - p campioni.
+        Serve a garantire che i campioni di test
+        non entrino mai nel training.
+        """
         p = 3
         validator = LeavePOutValidation(p=p)
         model = DummyModel()
 
         validator.validate(model, self.X, self.y)
 
-        # Ogni fit deve usare n - p campioni
         self.assertEqual(model.X_train_.shape[0], len(self.X) - p)
 
     # =========================
-    # Stabilità numerica
+    # STABILITÀ NUMERICA
     # =========================
+
     def test_no_nan_in_summary(self):
+        """
+        Verifico che nessuna metrica aggregata
+        produca NaN.
+        """
         validator = LeavePOutValidation(p=1)
         model = DummyModel()
 

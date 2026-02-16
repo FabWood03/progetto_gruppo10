@@ -4,39 +4,77 @@ import numpy as np
 from src.validation.holdout import HoldoutValidation
 
 
+"""
+Questo file testa la strategia di validazione Holdout.
+
+Obiettivi:
+1) Verificare corretto split train/test
+2) Verificare integrazione modello + preprocessing
+3) Verificare struttura output
+4) Verificare correttezza metriche
+5) Garantire riproducibilità
+"""
+
+
+# =========================================================
+# MODELLO FITTIZIO
+# =========================================================
+
 class DummyModel:
     """
-    Modello fittizio per testare la validazione.
-    Implementa solo l'interfaccia necessaria.
+    Modello fittizio usato solo per test.
+
+    Implementa:
+    - fit
+    - predict
+    - predict_proba
+
+    Serve per isolare la logica della validazione
+    dalla complessità del modello reale.
     """
 
     def fit(self, X, y):
+        # Memorizzo solo il numero di classi
         self.n_classes_ = len(np.unique(y))
 
     def predict(self, X):
-        # Predice sempre 0
+        # Predice sempre classe 0
         return np.zeros(X.shape[0], dtype=int)
 
     def predict_proba(self, X):
-        # Probabilità fissa [0.7, 0.3]
+        # Restituisce probabilità costanti
         return np.tile([0.7, 0.3], (X.shape[0], 1))
+
+
+# =========================================================
+# TEST HOLDOUT VALIDATION
+# =========================================================
 
 class TestHoldoutValidation(unittest.TestCase):
 
     def setUp(self):
+        """
+        Genero dataset sintetico casuale ma riproducibile.
+        Inserisco NaN per testare imputazione.
+        """
         rng = np.random.default_rng(42)
 
         self.X = rng.normal(size=(50, 5))
         self.y = rng.integers(0, 2, size=50)
 
-        # Inseriamo NaN per testare imputazione
+        # Inserisco NaN per verificare imputazione
         self.X[0, 0] = np.nan
         self.X[1, 1] = np.nan
 
     # =========================
-    # Costruttore
+    # COSTRUTTORE
     # =========================
+
     def test_invalid_test_size_raises(self):
+        """
+        test_size deve essere tra 0 e 1 (esclusi).
+        Verifico che valori estremi generino errore.
+        """
         with self.assertRaises(ValueError):
             HoldoutValidation(test_size=0.0)
 
@@ -44,24 +82,36 @@ class TestHoldoutValidation(unittest.TestCase):
             HoldoutValidation(test_size=1.0)
 
     # =========================
-    # Validazione base
+    # STRUTTURA OUTPUT
     # =========================
+
     def test_holdout_validation_output_structure(self):
+        """
+        Verifico che la funzione validate restituisca
+        tutte le chiavi attese.
+        """
         validator = HoldoutValidation(test_size=0.2, random_state=42)
         model = DummyModel()
 
         result = validator.validate(model, self.X, self.y)
 
-        # Chiavi attese
+        # Struttura completa output
         self.assertIn("metrics", result)
         self.assertIn("roc_data", result)
         self.assertIn("confusion_matrix", result)
         self.assertIn("y_test", result)
         self.assertIn("y_pred", result)
- # =========================
-    # Shape e coerenza
+
     # =========================
+    # SHAPE E COERENZA
+    # =========================
+
     def test_holdout_shapes_are_consistent(self):
+        """
+        Verifico coerenza dimensionale:
+        - y_test e y_pred stessa lunghezza
+        - matrice di confusione 2x2
+        """
         validator = HoldoutValidation(test_size=0.3, random_state=1)
         model = DummyModel()
 
@@ -75,9 +125,14 @@ class TestHoldoutValidation(unittest.TestCase):
         self.assertEqual(cm.shape, (2, 2))
 
     # =========================
-    # Metriche presenti
+    # METRICHE PRESENTI
     # =========================
+
     def test_metrics_keys_present(self):
+        """
+        Verifico che tutte le metriche principali
+        siano calcolate e presenti nel dizionario.
+        """
         validator = HoldoutValidation(test_size=0.25, random_state=0)
         model = DummyModel()
 
@@ -89,9 +144,15 @@ class TestHoldoutValidation(unittest.TestCase):
             self.assertIn(key, metrics)
 
     # =========================
-    # Riproducibilità
+    # RIPRODUCIBILITÀ
     # =========================
+
     def test_holdout_is_reproducible(self):
+        """
+        Con stesso random_state,
+        lo split deve essere identico.
+        Questo garantisce riproducibilità scientifica.
+        """
         model1 = DummyModel()
         model2 = DummyModel()
 

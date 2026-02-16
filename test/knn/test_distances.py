@@ -3,7 +3,8 @@ import numpy as np
 import sys
 import os
 
-# Aggiunge la root al path per importare i moduli corretti
+# Aggiungo la root al path per garantire che i moduli vengano importati correttamente.
+# Questo evita errori di import nei test automatizzati.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.knn.distances import (
@@ -19,7 +20,8 @@ class TestDistances(unittest.TestCase):
 
     def setUp(self):
         """
-        Dati comuni utilizzati in più test.
+        Creo dati di test controllati e deterministici.
+        Questo mi permette di verificare i risultati matematici in modo preciso.
         """
         self.x = np.array([1.0, 2.0])
 
@@ -35,17 +37,21 @@ class TestDistances(unittest.TestCase):
 
     def test_factory_creation(self):
         """
-        Verifica che il Factory restituisca l'istanza corretta
-        e sollevi errori per metriche non supportate.
+        Verifico che il Factory Pattern restituisca
+        l’istanza corretta per ogni metrica supportata.
+        Controllo anche che metriche non valide generino errore.
+        Questo garantisce estendibilità e robustezza dell’API.
         """
         self.assertIsInstance(
             DistanceFactory.get_distance("euclidean"),
             EuclideanDistance
         )
+
         self.assertIsInstance(
             DistanceFactory.get_distance("manhattan"),
             ManhattanDistance
         )
+
         self.assertIsInstance(
             DistanceFactory.get_distance("cosine"),
             CosineDistance
@@ -56,33 +62,37 @@ class TestDistances(unittest.TestCase):
 
     def test_factory_case_and_spaces(self):
         """
-        Il nome della metrica deve essere case-insensitive
-        e tollerare spazi.
+        Verifico che il nome della metrica sia case-insensitive
+        e che eventuali spazi vengano gestiti correttamente.
+        Questo migliora usabilità e robustezza.
         """
         dist = DistanceFactory.get_distance("  EuClIdEaN  ")
         self.assertIsInstance(dist, EuclideanDistance)
 
     def test_factory_invalid_type(self):
         """
-        Il Factory deve fallire se il tipo non è stringa.
+        Se il tipo passato non è stringa, il Factory deve fallire.
+        Questo evita errori silenziosi.
         """
         with self.assertRaises(AttributeError):
             DistanceFactory.get_distance(None)
 
     def test_factory_empty_string(self):
         """
-        Stringa vuota non valida.
+        Una stringa vuota non è una metrica valida.
+        Controllo che venga sollevato ValueError.
         """
         with self.assertRaises(ValueError):
             DistanceFactory.get_distance("")
 
-        # =========================
-        # DISTANZE CORRETTE
-        # =========================
+    # =========================
+    # DISTANZE CORRETTE
+    # =========================
 
     def test_euclidean_distance(self):
         """
-        Verifica matematica della distanza Euclidea.
+        Verifico matematicamente la formula della distanza Euclidea.
+        Confronto con valori calcolati a mano.
         """
         strategy = EuclideanDistance()
         dists = strategy.calculate(self.x, self.matrix)
@@ -102,7 +112,7 @@ class TestDistances(unittest.TestCase):
 
     def test_manhattan_distance(self):
         """
-        Verifica matematica della distanza Manhattan.
+        Verifico la distanza Manhattan (somma dei valori assoluti).
         """
         strategy = ManhattanDistance()
         dists = strategy.calculate(self.x, self.matrix)
@@ -117,7 +127,7 @@ class TestDistances(unittest.TestCase):
 
     def test_chebyshev_distance(self):
         """
-        Verifica matematica della distanza Chebyshev.
+        Verifico la distanza Chebyshev (massima differenza assoluta).
         """
         strategy = ChebyshevDistance()
         dists = strategy.calculate(self.x, self.matrix)
@@ -132,17 +142,19 @@ class TestDistances(unittest.TestCase):
 
     def test_cosine_distance(self):
         """
-        Verifica della distanza Coseno in casi noti.
+        Verifico la distanza Coseno in casi teorici noti:
+        - Vettori ortogonali → distanza = 1
+        - Vettori paralleli → distanza = 0
         """
         strategy = CosineDistance()
 
-        # Vettori ortogonali -> cos = 0 -> distanza = 1
+        # Ortogonali
         x_ortho = np.array([1.0, 0.0])
         mat_ortho = np.array([[0.0, 1.0]])
         res_ortho = strategy.calculate(x_ortho, mat_ortho)
         self.assertAlmostEqual(res_ortho[0], 1.0)
 
-        # Vettori paralleli -> cos = 1 -> distanza = 0
+        # Paralleli
         x_para = np.array([2.0, 2.0])
         mat_para = np.array([[1.0, 1.0]])
         res_para = strategy.calculate(x_para, mat_para)
@@ -150,25 +162,22 @@ class TestDistances(unittest.TestCase):
 
     def test_cosine_zero_row_in_matrix(self):
         """
-        Cosine distance con una riga nulla nella matrix.
-        Deve attivare il ramo denom == 0 senza crash o NaN.
+        Caso limite: riga nulla nella matrix.
+        Verifico che il denominatore zero venga gestito
+        senza crash o NaN.
         """
         strategy = CosineDistance()
 
         x = np.array([1.0, 1.0])
         matrix = np.array([
-            [0.0, 0.0],   # norma zero → denom == 0
+            [0.0, 0.0],
             [1.0, 1.0]
         ])
 
         result = strategy.calculate(x, matrix)
 
-        # La distanza deve essere finita
         self.assertTrue(np.isfinite(result[0]))
-        # Vettori identici → distanza 0
         self.assertAlmostEqual(result[1], 0.0)
-
-
 
     # =========================
     # CASI LIMITE / ERRORI
@@ -177,6 +186,7 @@ class TestDistances(unittest.TestCase):
     def test_dimension_mismatch(self):
         """
         Dimensioni incompatibili tra x e matrix.
+        Il metodo deve sollevare errore.
         """
         strategy = EuclideanDistance()
 
@@ -189,18 +199,20 @@ class TestDistances(unittest.TestCase):
     def test_matrix_not_2d(self):
         """
         matrix deve essere bidimensionale.
+        Evito comportamenti imprevedibili.
         """
         strategy = ManhattanDistance()
 
         x = np.array([1.0, 2.0])
-        matrix = np.array([3.0, 4.0])  # non 2D
+        matrix = np.array([3.0, 4.0])
 
         with self.assertRaises(ValueError):
             strategy.calculate(x, matrix)
 
     def test_empty_matrix(self):
         """
-        matrix vuota: deve restituire un array vuoto.
+        Caso matrix vuota.
+        Deve restituire un array vuoto senza errori.
         """
         strategy = EuclideanDistance()
 
@@ -212,7 +224,7 @@ class TestDistances(unittest.TestCase):
 
     def test_negative_values(self):
         """
-        Supporto a valori negativi.
+        Verifico che valori negativi siano gestiti correttamente.
         """
         strategy = ManhattanDistance()
 
@@ -224,7 +236,8 @@ class TestDistances(unittest.TestCase):
 
     def test_nan_values(self):
         """
-        Presenza di NaN: il risultato deve propagare NaN.
+        Presenza di NaN.
+        Il risultato deve propagare NaN e non crashare.
         """
         strategy = ManhattanDistance()
 
@@ -236,7 +249,7 @@ class TestDistances(unittest.TestCase):
 
     def test_cosine_zero_vector(self):
         """
-        Cosine distance con vettore nullo.
+        Caso limite: vettore nullo.
         Non deve produrre NaN o crash.
         """
         strategy = CosineDistance()
@@ -249,7 +262,8 @@ class TestDistances(unittest.TestCase):
 
     def test_output_shape(self):
         """
-        L'output deve avere una distanza per ogni riga della matrix.
+        L'output deve contenere una distanza per ogni riga della matrix.
+        Verifico coerenza strutturale.
         """
         strategy = EuclideanDistance()
         dists = strategy.calculate(self.x, self.matrix)
